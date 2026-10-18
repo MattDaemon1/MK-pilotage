@@ -16,6 +16,8 @@ export const SettingsBackupView: React.FC = () => {
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
 
   const handleDownloadSqlite = () => {
     window.location.href = '/api/backup/sqlite';
@@ -29,15 +31,15 @@ export const SettingsBackupView: React.FC = () => {
     window.location.href = `/api/backup/csv/${table}`;
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPendingRestoreFile(file);
+    e.target.value = '';
+  };
 
-    if (!window.confirm('Attention : La restauration va remplacer l\'ensemble des données actuelles par celles du fichier de sauvegarde. Confirmez-vous ?')) {
-      e.target.value = '';
-      return;
-    }
-
+  const executeRestore = () => {
+    if (!pendingRestoreFile) return;
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -45,25 +47,25 @@ export const SettingsBackupView: React.FC = () => {
         const res = await api.restoreBackup(json);
         setRestoreMessage(res.message);
         setRestoreError(null);
+        setPendingRestoreFile(null);
         setTimeout(() => window.location.reload(), 1500);
       } catch (err: any) {
         setRestoreError(err.message || 'Fichier JSON invalide.');
         setRestoreMessage(null);
+        setPendingRestoreFile(null);
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(pendingRestoreFile);
   };
 
-  const handleResetDemo = async () => {
-    if (!window.confirm('Voulez-vous réinitialiser la base de données SQLite avec le jeu de données d\'exemple Matt Konnect ? Toutes les modifications non sauvegardées seront perdues.')) {
-      return;
-    }
+  const executeResetDemo = async () => {
+    setShowResetConfirm(false);
     try {
       const res = await api.resetDemo();
       setResetMessage(res.message);
       setTimeout(() => window.location.reload(), 1200);
     } catch (err: any) {
-      alert(err.message);
+      setRestoreError(err.message || 'Erreur lors de la réinitialisation');
     }
   };
 
@@ -163,7 +165,7 @@ export const SettingsBackupView: React.FC = () => {
             <input
               type="file"
               accept=".json"
-              onChange={handleFileUpload}
+              onChange={handleFileSelected}
               className="hidden"
             />
           </label>
@@ -222,12 +224,80 @@ export const SettingsBackupView: React.FC = () => {
         </div>
 
         <button
-          onClick={handleResetDemo}
-          className="px-3.5 py-2 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
+          onClick={() => setShowResetConfirm(true)}
+          className="px-3.5 py-2 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer"
         >
           Recharger les données d'exemple Matt Konnect
         </button>
       </div>
+
+      {/* Modal: Confirm Restore */}
+      {pendingRestoreFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-amber-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Confirmer la restauration</h3>
+                <p className="text-slate-500 text-[11px]">{pendingRestoreFile.name}</p>
+              </div>
+            </div>
+            <p className="text-slate-600 leading-relaxed">
+              Attention : Cette action va remplacer l'ensemble des données actuelles par celles contenues dans ce fichier de sauvegarde.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPendingRestoreFile(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={executeRestore}
+                className="px-4 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700"
+              >
+                Confirmer la restauration
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirm Reset Demo */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-amber-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Réinitialiser avec les données d'exemple ?</h3>
+                <p className="text-slate-500 text-[11px]">Base locale SQLite</p>
+              </div>
+            </div>
+            <p className="text-slate-600 leading-relaxed">
+              Voulez-vous recharger le jeu de données d'exemple Matt Konnect ? Les modifications non exportées seront écrasées.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={executeResetDemo}
+                className="px-4 py-1.5 bg-amber-600 text-white rounded font-medium hover:bg-amber-700"
+              >
+                Confirmer le rechargement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

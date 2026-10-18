@@ -83,11 +83,11 @@ export const api = {
     return handleResponse<{ success: boolean }>(res);
   },
 
-  async deleteContact(id: number): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`${BASE_URL}/contacts/${id}`, {
+  async deleteContact(id: number, force: boolean = false): Promise<{ success: boolean; message: string; can_force?: boolean }> {
+    const res = await fetch(`${BASE_URL}/contacts/${id}${force ? '?force=true' : ''}`, {
       method: 'DELETE'
     });
-    return handleResponse<{ success: boolean; message: string }>(res);
+    return handleResponse<{ success: boolean; message: string; can_force?: boolean }>(res);
   },
 
   // Activities (Journal)
@@ -239,6 +239,13 @@ export const api = {
     return handleResponse<Quote>(res);
   },
 
+  async deleteQuote(id: number): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${BASE_URL}/quotes/${id}`, {
+      method: 'DELETE'
+    });
+    return handleResponse<{ success: boolean; message: string }>(res);
+  },
+
   async createInvoice(data: Partial<Invoice>): Promise<Invoice> {
     const res = await fetch(`${BASE_URL}/invoices`, {
       method: 'POST',
@@ -246,6 +253,22 @@ export const api = {
       body: JSON.stringify(data)
     });
     return handleResponse<Invoice>(res);
+  },
+
+  async updateInvoice(id: number, data: Partial<Invoice>): Promise<Invoice> {
+    const res = await fetch(`${BASE_URL}/invoices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return handleResponse<Invoice>(res);
+  },
+
+  async deleteInvoice(id: number): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${BASE_URL}/invoices/${id}`, {
+      method: 'DELETE'
+    });
+    return handleResponse<{ success: boolean; message: string }>(res);
   },
 
   async recordPayment(data: {
@@ -262,6 +285,13 @@ export const api = {
       body: JSON.stringify(data)
     });
     return handleResponse<Payment>(res);
+  },
+
+  async deletePayment(id: number): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${BASE_URL}/payments/${id}`, {
+      method: 'DELETE'
+    });
+    return handleResponse<{ success: boolean; message: string }>(res);
   },
 
   // Tasks

@@ -226,7 +226,28 @@ app.get('/api/contacts/:id', (req, res) => {
 app.put('/api/contacts/:id', (req, res) => {
   try {
     const contactId = Number(req.params.id);
-    const fields = req.body;
+    const existing = queryOne(`SELECT * FROM contacts WHERE id = ?`, [contactId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Contact introuvable.' });
+    }
+
+    const b = req.body;
+    const company_name = b.company_name !== undefined ? (b.company_name || null) : existing.company_name;
+    const contact_name = b.contact_name !== undefined ? b.contact_name : existing.contact_name;
+    const role_title = b.role_title !== undefined ? (b.role_title || null) : existing.role_title;
+    const email = b.email !== undefined ? (b.email || null) : existing.email;
+    const phone = b.phone !== undefined ? (b.phone || null) : existing.phone;
+    const website = b.website !== undefined ? (b.website || null) : existing.website;
+    const address = b.address !== undefined ? (b.address || null) : existing.address;
+    const postal_code = b.postal_code !== undefined ? (b.postal_code || null) : existing.postal_code;
+    const city = b.city !== undefined ? (b.city || null) : existing.city;
+    const industry = b.industry !== undefined ? (b.industry || null) : existing.industry;
+    const lead_source = b.lead_source !== undefined ? b.lead_source : existing.lead_source;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const next_action = b.next_action !== undefined ? (b.next_action || null) : existing.next_action;
+    const follow_up_date = b.follow_up_date !== undefined ? (b.follow_up_date || null) : existing.follow_up_date;
+    const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
+    const is_archived = b.is_archived !== undefined ? (b.is_archived ? 1 : 0) : existing.is_archived;
 
     execute(`
       UPDATE contacts SET
@@ -245,24 +266,26 @@ app.put('/api/contacts/:id', (req, res) => {
         next_action = ?,
         follow_up_date = ?,
         notes = ?,
+        is_archived = ?,
         updated_at = datetime('now', 'localtime')
       WHERE id = ?
     `, [
-      fields.company_name || null,
-      fields.contact_name,
-      fields.role_title || null,
-      fields.email || null,
-      fields.phone || null,
-      fields.website || null,
-      fields.address || null,
-      fields.postal_code || null,
-      fields.city || null,
-      fields.industry || null,
-      fields.lead_source,
-      fields.status,
-      fields.next_action || null,
-      fields.follow_up_date || null,
-      fields.notes || null,
+      company_name,
+      contact_name,
+      role_title,
+      email,
+      phone,
+      website,
+      address,
+      postal_code,
+      city,
+      industry,
+      lead_source,
+      status,
+      next_action,
+      follow_up_date,
+      notes,
+      is_archived,
       contactId
     ]);
 
@@ -321,19 +344,35 @@ app.post('/api/contacts/:id/archive', (req, res) => {
 app.delete('/api/contacts/:id', (req, res) => {
   try {
     const contactId = Number(req.params.id);
-    // Verification: prevent cascade destruction of history
+    const contact = queryOne(`SELECT * FROM contacts WHERE id = ?`, [contactId]);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact introuvable.' });
+    }
+
+    const force = req.query.force === 'true' || req.query.force === '1';
+
     const missionsCount = queryOne(`SELECT COUNT(*) as count FROM missions WHERE contact_id = ?`, [contactId])?.count || 0;
     const contractsCount = queryOne(`SELECT COUNT(*) as count FROM contracts WHERE contact_id = ?`, [contactId])?.count || 0;
     const invoicesCount = queryOne(`SELECT COUNT(*) as count FROM invoices WHERE contact_id = ?`, [contactId])?.count || 0;
+    const quotesCount = queryOne(`SELECT COUNT(*) as count FROM quotes WHERE contact_id = ?`, [contactId])?.count || 0;
 
-    if (missionsCount > 0 || contractsCount > 0 || invoicesCount > 0) {
+    if (!force && (missionsCount > 0 || contractsCount > 0 || invoicesCount > 0 || quotesCount > 0)) {
       return res.status(400).json({
-        error: `Impossible de supprimer définitivement ce contact car il possède des missions (${missionsCount}), contrats (${contractsCount}) ou factures (${invoicesCount}). Privilégiez l'archivage pour conserver l'historique.`
+        error: `Ce contact possède des éléments associés : ${missionsCount} mission(s), ${contractsCount} contrat(s), ${invoicesCount} facture(s), ${quotesCount} devis. Vous pouvez soit l'archiver, soit forcer sa suppression définitive.`,
+        can_force: true
       });
     }
 
+    execute(`DELETE FROM payments WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM invoices WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM quotes WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM tasks WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM activities WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM contracts WHERE contact_id = ?`, [contactId]);
+    execute(`DELETE FROM missions WHERE contact_id = ?`, [contactId]);
     execute(`DELETE FROM contacts WHERE id = ?`, [contactId]);
-    res.json({ success: true, message: 'Contact supprimé.' });
+
+    res.json({ success: true, message: `Fiche de "${contact.contact_name}" supprimée avec succès.` });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -451,20 +490,24 @@ app.post('/api/activities', (req, res) => {
 app.put('/api/activities/:id', (req, res) => {
   try {
     const activityId = Number(req.params.id);
-    const {
-      title,
-      description,
-      activity_date,
-      activity_time,
-      contact_id,
-      mission_id,
-      category,
-      duration_minutes,
-      status,
-      result,
-      next_action,
-      attachment_url
-    } = req.body;
+    const existing = queryOne(`SELECT * FROM activities WHERE id = ?`, [activityId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Activité introuvable.' });
+    }
+
+    const b = req.body;
+    const title = b.title !== undefined ? b.title : existing.title;
+    const description = b.description !== undefined ? (b.description || null) : existing.description;
+    const activity_date = b.activity_date !== undefined ? b.activity_date : existing.activity_date;
+    const activity_time = b.activity_time !== undefined ? (b.activity_time || null) : existing.activity_time;
+    const contact_id = b.contact_id !== undefined ? (b.contact_id ? Number(b.contact_id) : null) : existing.contact_id;
+    const mission_id = b.mission_id !== undefined ? (b.mission_id ? Number(b.mission_id) : null) : existing.mission_id;
+    const category = b.category !== undefined ? b.category : existing.category;
+    const duration_minutes = b.duration_minutes !== undefined ? Number(b.duration_minutes) : existing.duration_minutes;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const result = b.result !== undefined ? (b.result || null) : existing.result;
+    const next_action = b.next_action !== undefined ? (b.next_action || null) : existing.next_action;
+    const attachment_url = b.attachment_url !== undefined ? (b.attachment_url || null) : existing.attachment_url;
 
     execute(`
       UPDATE activities SET
@@ -484,17 +527,17 @@ app.put('/api/activities/:id', (req, res) => {
       WHERE id = ?
     `, [
       title,
-      description || null,
+      description,
       activity_date,
-      activity_time || null,
-      contact_id ? Number(contact_id) : null,
-      mission_id ? Number(mission_id) : null,
+      activity_time,
+      contact_id,
+      mission_id,
       category,
-      Number(duration_minutes) || 0,
+      duration_minutes,
       status,
-      result || null,
-      next_action || null,
-      attachment_url || null,
+      result,
+      next_action,
+      attachment_url,
       activityId
     ]);
 
@@ -615,22 +658,28 @@ app.post('/api/missions', (req, res) => {
 app.put('/api/missions/:id', (req, res) => {
   try {
     const missionId = Number(req.params.id);
-    const {
-      title,
-      contact_id,
-      service_category,
-      is_recurring,
-      description,
-      start_date,
-      expected_delivery_date,
-      closed_date,
-      status,
-      estimated_amount,
-      accepted_amount,
-      time_budget_hours,
-      notes,
-      is_archived
-    } = req.body;
+    const existing = queryOne(`SELECT * FROM missions WHERE id = ?`, [missionId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Mission introuvable.' });
+    }
+
+    const b = req.body;
+    const title = b.title !== undefined ? b.title : existing.title;
+    const contact_id = b.contact_id !== undefined ? Number(b.contact_id) : existing.contact_id;
+    const service_category = b.service_category !== undefined ? b.service_category : existing.service_category;
+    const is_recurring = b.is_recurring !== undefined ? (b.is_recurring ? 1 : 0) : existing.is_recurring;
+    const description = b.description !== undefined ? (b.description || null) : existing.description;
+    const start_date = b.start_date !== undefined ? (b.start_date || null) : existing.start_date;
+    const expected_delivery_date = b.expected_delivery_date !== undefined ? (b.expected_delivery_date || null) : existing.expected_delivery_date;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const closed_date = b.closed_date !== undefined ? (b.closed_date || null) : (status === 'clôturée' ? (existing.closed_date || new Date().toISOString().split('T')[0]) : existing.closed_date);
+    const estimated_amount = b.estimated_amount !== undefined ? Number(b.estimated_amount) : existing.estimated_amount;
+    const accepted_amount = b.accepted_amount !== undefined ? Number(b.accepted_amount) : existing.accepted_amount;
+    const invoiced_amount = b.invoiced_amount !== undefined ? Number(b.invoiced_amount) : existing.invoiced_amount;
+    const collected_amount = b.collected_amount !== undefined ? Number(b.collected_amount) : existing.collected_amount;
+    const time_budget_hours = b.time_budget_hours !== undefined ? Number(b.time_budget_hours) : existing.time_budget_hours;
+    const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
+    const is_archived = b.is_archived !== undefined ? (b.is_archived ? 1 : 0) : existing.is_archived;
 
     execute(`
       UPDATE missions SET
@@ -645,6 +694,8 @@ app.put('/api/missions/:id', (req, res) => {
         status = ?,
         estimated_amount = ?,
         accepted_amount = ?,
+        invoiced_amount = ?,
+        collected_amount = ?,
         time_budget_hours = ?,
         notes = ?,
         is_archived = ?,
@@ -652,19 +703,21 @@ app.put('/api/missions/:id', (req, res) => {
       WHERE id = ?
     `, [
       title,
-      Number(contact_id),
+      contact_id,
       service_category,
-      is_recurring ? 1 : 0,
-      description || null,
-      start_date || null,
-      expected_delivery_date || null,
-      closed_date || (status === 'clôturée' ? new Date().toISOString().split('T')[0] : null),
+      is_recurring,
+      description,
+      start_date,
+      expected_delivery_date,
+      closed_date,
       status,
-      Number(estimated_amount) || 0,
-      Number(accepted_amount) || 0,
-      Number(time_budget_hours) || 0,
-      notes || null,
-      is_archived ? 1 : 0,
+      estimated_amount,
+      accepted_amount,
+      invoiced_amount,
+      collected_amount,
+      time_budget_hours,
+      notes,
+      is_archived,
       missionId
     ]);
 
@@ -789,20 +842,24 @@ app.post('/api/contracts', (req, res) => {
 app.put('/api/contracts/:id', (req, res) => {
   try {
     const contractId = Number(req.params.id);
-    const {
-      contact_id,
-      title,
-      description,
-      start_date,
-      end_date,
-      frequency,
-      amount_per_period,
-      next_renewal_date,
-      notice_period_days,
-      included_hours_per_month,
-      status,
-      notes
-    } = req.body;
+    const existing = queryOne(`SELECT * FROM contracts WHERE id = ?`, [contractId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Contrat introuvable.' });
+    }
+
+    const b = req.body;
+    const contact_id = b.contact_id !== undefined ? Number(b.contact_id) : existing.contact_id;
+    const title = b.title !== undefined ? b.title : existing.title;
+    const description = b.description !== undefined ? (b.description || null) : existing.description;
+    const start_date = b.start_date !== undefined ? b.start_date : existing.start_date;
+    const end_date = b.end_date !== undefined ? (b.end_date || null) : existing.end_date;
+    const frequency = b.frequency !== undefined ? b.frequency : existing.frequency;
+    const amount_per_period = b.amount_per_period !== undefined ? Number(b.amount_per_period) : existing.amount_per_period;
+    const next_renewal_date = b.next_renewal_date !== undefined ? (b.next_renewal_date || null) : existing.next_renewal_date;
+    const notice_period_days = b.notice_period_days !== undefined ? Number(b.notice_period_days) : existing.notice_period_days;
+    const included_hours_per_month = b.included_hours_per_month !== undefined ? Number(b.included_hours_per_month) : existing.included_hours_per_month;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
 
     execute(`
       UPDATE contracts SET
@@ -821,18 +878,18 @@ app.put('/api/contracts/:id', (req, res) => {
         updated_at = datetime('now', 'localtime')
       WHERE id = ?
     `, [
-      Number(contact_id),
+      contact_id,
       title,
-      description || null,
+      description,
       start_date,
-      end_date || null,
+      end_date,
       frequency,
-      Number(amount_per_period),
-      next_renewal_date || null,
-      Number(notice_period_days) || 30,
-      Number(included_hours_per_month) || 0,
+      amount_per_period,
+      next_renewal_date,
+      notice_period_days,
+      included_hours_per_month,
       status,
-      notes || null,
+      notes,
       contractId
     ]);
 
@@ -979,21 +1036,22 @@ app.post('/api/quotes', (req, res) => {
 app.put('/api/quotes/:id', (req, res) => {
   try {
     const quoteId = Number(req.params.id);
-    const {
-      contact_id,
-      mission_id,
-      issue_date,
-      validity_date,
-      amount_ht,
-      tax_rate,
-      status,
-      document_url,
-      notes
-    } = req.body;
+    const existing = queryOne(`SELECT * FROM quotes WHERE id = ?`, [quoteId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Devis introuvable.' });
+    }
 
-    const numHT = Number(amount_ht);
-    const numTax = Number(tax_rate);
+    const b = req.body;
+    const contact_id = b.contact_id !== undefined ? Number(b.contact_id) : existing.contact_id;
+    const mission_id = b.mission_id !== undefined ? (b.mission_id ? Number(b.mission_id) : null) : existing.mission_id;
+    const issue_date = b.issue_date !== undefined ? b.issue_date : existing.issue_date;
+    const validity_date = b.validity_date !== undefined ? (b.validity_date || null) : existing.validity_date;
+    const numHT = b.amount_ht !== undefined ? Number(b.amount_ht) : existing.amount_ht;
+    const numTax = b.tax_rate !== undefined ? Number(b.tax_rate) : existing.tax_rate;
     const numTTC = Math.round((numHT * (1 + numTax / 100)) * 100) / 100;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const document_url = b.document_url !== undefined ? (b.document_url || null) : existing.document_url;
+    const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
 
     execute(`
       UPDATE quotes SET
@@ -1010,21 +1068,31 @@ app.put('/api/quotes/:id', (req, res) => {
         updated_at = datetime('now', 'localtime')
       WHERE id = ?
     `, [
-      Number(contact_id),
-      mission_id ? Number(mission_id) : null,
+      contact_id,
+      mission_id,
       issue_date,
-      validity_date || null,
+      validity_date,
       numHT,
       numTax,
       numTTC,
       status,
-      document_url || null,
-      notes || null,
+      document_url,
+      notes,
       quoteId
     ]);
 
     const updated = queryOne(`SELECT * FROM quotes WHERE id = ?`, [quoteId]);
     res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/quotes/:id', (req, res) => {
+  try {
+    const quoteId = Number(req.params.id);
+    execute(`DELETE FROM quotes WHERE id = ?`, [quoteId]);
+    res.json({ success: true, message: 'Devis supprimé.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1094,6 +1162,72 @@ app.post('/api/invoices', (req, res) => {
   }
 });
 
+app.put('/api/invoices/:id', (req, res) => {
+  try {
+    const invoiceId = Number(req.params.id);
+    const existing = queryOne(`SELECT * FROM invoices WHERE id = ?`, [invoiceId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Facture introuvable.' });
+    }
+
+    const b = req.body;
+    const contact_id = b.contact_id !== undefined ? Number(b.contact_id) : existing.contact_id;
+    const mission_id = b.mission_id !== undefined ? (b.mission_id ? Number(b.mission_id) : null) : existing.mission_id;
+    const issue_date = b.issue_date !== undefined ? b.issue_date : existing.issue_date;
+    const due_date = b.due_date !== undefined ? b.due_date : existing.due_date;
+    const numHT = b.amount_ht !== undefined ? Number(b.amount_ht) : existing.amount_ht;
+    const numTax = b.tax_rate !== undefined ? Number(b.tax_rate) : existing.tax_rate;
+    const numTTC = Math.round((numHT * (1 + numTax / 100)) * 100) / 100;
+    const payment_status = b.payment_status !== undefined ? b.payment_status : existing.payment_status;
+    const document_url = b.document_url !== undefined ? (b.document_url || null) : existing.document_url;
+    const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
+
+    execute(`
+      UPDATE invoices SET
+        contact_id = ?,
+        mission_id = ?,
+        issue_date = ?,
+        due_date = ?,
+        amount_ht = ?,
+        tax_rate = ?,
+        amount_ttc = ?,
+        payment_status = ?,
+        document_url = ?,
+        notes = ?,
+        updated_at = datetime('now', 'localtime')
+      WHERE id = ?
+    `, [
+      contact_id,
+      mission_id,
+      issue_date,
+      due_date,
+      numHT,
+      numTax,
+      numTTC,
+      payment_status,
+      document_url,
+      notes,
+      invoiceId
+    ]);
+
+    const updated = queryOne(`SELECT * FROM invoices WHERE id = ?`, [invoiceId]);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/invoices/:id', (req, res) => {
+  try {
+    const invoiceId = Number(req.params.id);
+    execute(`DELETE FROM payments WHERE invoice_id = ?`, [invoiceId]);
+    execute(`DELETE FROM invoices WHERE id = ?`, [invoiceId]);
+    res.json({ success: true, message: 'Facture supprimée.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/payments', (req, res) => {
   try {
     const {
@@ -1143,6 +1277,38 @@ app.post('/api/payments', (req, res) => {
 
     const created = queryOne(`SELECT * FROM payments WHERE id = ?`, [id]);
     res.status(201).json(created);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/payments/:id', (req, res) => {
+  try {
+    const paymentId = Number(req.params.id);
+    const payment = queryOne(`SELECT * FROM payments WHERE id = ?`, [paymentId]);
+    if (!payment) {
+      return res.status(404).json({ error: 'Règlement non trouvé.' });
+    }
+    const invoiceId = payment.invoice_id;
+
+    execute(`DELETE FROM payments WHERE id = ?`, [paymentId]);
+
+    // Recalculate invoice status
+    const invoice = queryOne(`SELECT * FROM invoices WHERE id = ?`, [invoiceId]);
+    if (invoice) {
+      const totalPaidRes = queryOne(`SELECT COALESCE(SUM(amount), 0) as paid FROM payments WHERE invoice_id = ?`, [invoiceId]);
+      const totalPaid = totalPaidRes?.paid || 0;
+
+      let newStatus = 'à payer';
+      if (totalPaid >= invoice.amount_ttc - 0.01) {
+        newStatus = 'payé';
+      } else if (totalPaid > 0) {
+        newStatus = 'partiellement payé';
+      }
+      execute(`UPDATE invoices SET payment_status = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`, [newStatus, invoiceId]);
+    }
+
+    res.json({ success: true, message: 'Règlement supprimé.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1250,21 +1416,24 @@ app.post('/api/tasks', (req, res) => {
 app.put('/api/tasks/:id', (req, res) => {
   try {
     const taskId = Number(req.params.id);
-    const {
-      title,
-      description,
-      due_date,
-      priority,
-      status,
-      contact_id,
-      mission_id,
-      contract_id,
-      task_type,
-      estimated_duration_minutes,
-      actual_duration_minutes
-    } = req.body;
+    const existing = queryOne(`SELECT * FROM tasks WHERE id = ?`, [taskId]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Tâche introuvable.' });
+    }
 
-    const completedAt = status === 'terminée' ? new Date().toISOString() : null;
+    const b = req.body;
+    const title = b.title !== undefined ? b.title : existing.title;
+    const description = b.description !== undefined ? (b.description || null) : existing.description;
+    const due_date = b.due_date !== undefined ? b.due_date : existing.due_date;
+    const priority = b.priority !== undefined ? b.priority : existing.priority;
+    const status = b.status !== undefined ? b.status : existing.status;
+    const contact_id = b.contact_id !== undefined ? (b.contact_id ? Number(b.contact_id) : null) : existing.contact_id;
+    const mission_id = b.mission_id !== undefined ? (b.mission_id ? Number(b.mission_id) : null) : existing.mission_id;
+    const contract_id = b.contract_id !== undefined ? (b.contract_id ? Number(b.contract_id) : null) : existing.contract_id;
+    const task_type = b.task_type !== undefined ? b.task_type : existing.task_type;
+    const estimated_duration_minutes = b.estimated_duration_minutes !== undefined ? Number(b.estimated_duration_minutes) : existing.estimated_duration_minutes;
+    const actual_duration_minutes = b.actual_duration_minutes !== undefined ? Number(b.actual_duration_minutes) : existing.actual_duration_minutes;
+    const completedAt = status === 'terminée' ? (existing.completed_at || new Date().toISOString()) : (status === 'à faire' || status === 'en cours' ? null : existing.completed_at);
 
     execute(`
       UPDATE tasks SET
@@ -1279,21 +1448,21 @@ app.put('/api/tasks/:id', (req, res) => {
         task_type = ?,
         estimated_duration_minutes = ?,
         actual_duration_minutes = ?,
-        completed_at = COALESCE(?, completed_at),
+        completed_at = ?,
         updated_at = datetime('now', 'localtime')
       WHERE id = ?
     `, [
       title,
-      description || null,
-      due_date || null,
+      description,
+      due_date,
       priority,
       status,
-      contact_id ? Number(contact_id) : null,
-      mission_id ? Number(mission_id) : null,
-      contract_id ? Number(contract_id) : null,
+      contact_id,
+      mission_id,
+      contract_id,
       task_type,
-      Number(estimated_duration_minutes) || 0,
-      Number(actual_duration_minutes) || 0,
+      estimated_duration_minutes,
+      actual_duration_minutes,
       completedAt,
       taskId
     ]);

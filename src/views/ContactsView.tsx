@@ -11,7 +11,11 @@ import {
   MapPin,
   Sparkles,
   Archive,
-  ChevronRight
+  ArchiveRestore,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { api, formatDateFr, formatEuro } from '../services/api.ts';
 import { Contact, ContactStatus, LeadSource } from '../types/crm.ts';
@@ -55,9 +59,33 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Edit Contact Modal state
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Delete confirmation modal state
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+  const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Conversion confirmation modal state
+  const [contactToConvert, setContactToConvert] = useState<Contact | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+
+  // In-app notification feedback banner
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   useEffect(() => {
     loadContacts();
   }, [statusFilter, searchQuery, showArchived]);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -76,16 +104,29 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
     }
   };
 
-  const handleConvert = async (e: React.MouseEvent, contact: Contact) => {
+  const handleOpenConvert = (e: React.MouseEvent, contact: Contact) => {
     e.stopPropagation();
-    if (!window.confirm(`Confirmez-vous la conversion du prospect "${contact.contact_name}" en Client officiel ? Tout l'historique sera préservé.`)) {
-      return;
-    }
+    setContactToConvert(contact);
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!contactToConvert) return;
+    setIsConverting(true);
     try {
-      await api.convertProspectToClient(contact.id);
+      await api.convertProspectToClient(contactToConvert.id);
+      setContactToConvert(null);
+      setNotification({
+        type: 'success',
+        message: `Le prospect "${contactToConvert.contact_name}" a été converti en Client officiel avec tout son historique.`
+      });
       loadContacts();
     } catch (err: any) {
-      alert(err.message);
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la conversion'
+      });
+    } finally {
+      setIsConverting(false);
     }
   };
 
@@ -118,12 +159,102 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
         follow_up_date: '',
         notes: ''
       });
+      setNotification({
+        type: 'success',
+        message: `Fiche de ${created.contact_name} créée avec succès.`
+      });
       loadContacts();
       onSelectContact(created.id);
     } catch (err: any) {
       setModalError(err.message || 'Erreur lors de la création');
     } finally {
       setModalSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (e: React.MouseEvent, contact: Contact) => {
+    e.stopPropagation();
+    setEditingContact(contact);
+    setEditForm({ ...contact });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContact) return;
+    setEditSubmitting(true);
+    try {
+      await api.updateContact(editingContact.id, editForm);
+      setEditingContact(null);
+      setNotification({
+        type: 'success',
+        message: `Fiche de ${editForm.contact_name || editingContact.contact_name} mise à jour avec succès.`
+      });
+      loadContacts();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la modification'
+      });
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleToggleArchive = async (e: React.MouseEvent, contact: Contact) => {
+    e.stopPropagation();
+    const willArchive = contact.is_archived === 0;
+    try {
+      await api.archiveContact(contact.id, willArchive);
+      setNotification({
+        type: 'success',
+        message: willArchive
+          ? `Fiche de ${contact.contact_name} archivée.`
+          : `Fiche de ${contact.contact_name} restaurée.`
+      });
+      loadContacts();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || "Erreur lors de l'archivage"
+      });
+    }
+  };
+
+  const handleOpenDelete = (e: React.MouseEvent, contact: Contact) => {
+    e.stopPropagation();
+    setContactToDelete(contact);
+    const hasHistory = (contact.active_missions_count || 0) > 0 || (contact.active_contracts_count || 0) > 0;
+    if (hasHistory) {
+      setDeleteWarning(`Ce contact possède ${contact.active_missions_count || 0} mission(s) et/ou ${contact.active_contracts_count || 0} contrat(s) actif(s).`);
+    } else {
+      setDeleteWarning(null);
+    }
+  };
+
+  const handleConfirmDelete = async (force: boolean = false) => {
+    if (!contactToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await api.deleteContact(contactToDelete.id, force);
+      setContactToDelete(null);
+      setDeleteWarning(null);
+      setNotification({
+        type: 'success',
+        message: res.message || 'Contact supprimé avec succès.'
+      });
+      loadContacts();
+    } catch (err: any) {
+      // If error mentions can_force or associated items
+      if (err.message && err.message.includes('éléments associés')) {
+        setDeleteWarning(err.message);
+      } else {
+        setNotification({
+          type: 'error',
+          message: err.message || 'Erreur lors de la suppression'
+        });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -136,7 +267,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
             Contacts & Entreprises
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Gestion du carnet d'adresses, conversion prospect vers client et suivi relationnel
+            Gestion du carnet d'adresses, modification complète, conversion prospect vers client, archivage et suppression
           </p>
         </div>
 
@@ -151,6 +282,32 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
           <span>Nouveau contact</span>
         </button>
       </div>
+
+      {/* Notification Banner */}
+      {notification && (
+        <div
+          className={`px-4 py-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-all ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-700 text-xs ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
@@ -197,7 +354,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
               onChange={(e) => setShowArchived(e.target.checked)}
               className="rounded text-indigo-600 focus:ring-indigo-500"
             />
-            <span>Archivés</span>
+            <span>Afficher archivés</span>
           </label>
         </div>
       </div>
@@ -238,7 +395,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                   <th className="py-3 px-4">Coordonnées</th>
                   <th className="py-3 px-4">Missions / Contrats</th>
                   <th className="py-3 px-4">Prochaine action</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right">Actions de gestion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -322,31 +479,64 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                       )}
                     </td>
 
-                    {/* Actions */}
+                    {/* Comprehensive Actions: Modifier, Supprimer, Archiver, Convertir, Fiche */}
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                         {c.status === 'prospect' && (
                           <button
-                            onClick={(e) => handleConvert(e, c)}
-                            className="px-2.5 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded transition-colors"
+                            onClick={(e) => handleOpenConvert(e, c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-md transition-colors"
                             title="Convertir en Client sans perte d'historique"
                           >
-                            Convertir en Client
+                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                            <span>Convertir</span>
                           </button>
                         )}
+
                         <button
                           onClick={() => onOpenQuickLogForContact(c.id)}
-                          className="px-2.5 py-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded transition-colors"
+                          className="px-2 py-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors"
                           title="Consigner une action pour ce contact"
                         >
                           + Action
                         </button>
+
+                        {/* Modifier */}
+                        <button
+                          onClick={(e) => handleOpenEdit(e, c)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition-colors shadow-2xs"
+                          title="Modifier toutes les informations de ce contact"
+                        >
+                          <Pencil className="w-3 h-3 text-slate-600" />
+                          <span>Modifier</span>
+                        </button>
+
+                        {/* Supprimer */}
+                        <button
+                          onClick={(e) => handleOpenDelete(e, c)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-md transition-colors shadow-2xs"
+                          title="Supprimer ce contact"
+                        >
+                          <Trash2 className="w-3 h-3 text-red-600" />
+                          <span>Supprimer</span>
+                        </button>
+
+                        {/* Archiver / Désarchiver */}
+                        <button
+                          onClick={(e) => handleToggleArchive(e, c)}
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                          title={c.is_archived ? "Désarchiver le contact" : "Archiver le contact"}
+                        >
+                          {c.is_archived ? <ArchiveRestore className="w-3.5 h-3.5 text-amber-600" /> : <Archive className="w-3.5 h-3.5" />}
+                        </button>
+
                         <button
                           onClick={() => onSelectContact(c.id)}
-                          className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
+                          className="inline-flex items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
                           title="Ouvrir la fiche complète"
                         >
-                          <ChevronRight className="w-4 h-4" />
+                          <span>Fiche</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -557,6 +747,304 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {editingContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-indigo-600" />
+                Modifier la fiche : {editingContact.contact_name}
+              </h2>
+              <button
+                onClick={() => setEditingContact(null)}
+                className="text-slate-400 hover:text-slate-700 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Nom & Prénom du contact <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.contact_name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Nom de l'entreprise
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.company_name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Fonction</label>
+                  <input
+                    type="text"
+                    value={editForm.role_title || ''}
+                    onChange={(e) => setEditForm({ ...editForm, role_title: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
+                  <select
+                    value={editForm.status || 'prospect'}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as ContactStatus })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="prospect">Prospect</option>
+                    <option value="client">Client</option>
+                    <option value="partenaire">Partenaire</option>
+                    <option value="client_inactif">Client inactif</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Origine</label>
+                  <select
+                    value={editForm.lead_source || 'prospection'}
+                    onChange={(e) => setEditForm({ ...editForm, lead_source: e.target.value as LeadSource })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="prospection">Prospection</option>
+                    <option value="recommandation">Recommandation</option>
+                    <option value="site web">Site web</option>
+                    <option value="réseau">Réseau</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editForm.email || ''}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Téléphone</label>
+                  <input
+                    type="tel"
+                    value={editForm.phone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Site Web</label>
+                  <input
+                    type="url"
+                    value={editForm.website || ''}
+                    onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block font-semibold text-slate-700 mb-1">Adresse</label>
+                  <input
+                    type="text"
+                    value={editForm.address || ''}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Code postal / Ville</label>
+                  <input
+                    type="text"
+                    value={editForm.city || ''}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Prochaine action</label>
+                  <input
+                    type="text"
+                    value={editForm.next_action || ''}
+                    onChange={(e) => setEditForm({ ...editForm, next_action: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date relance</label>
+                  <input
+                    type="date"
+                    value={editForm.follow_up_date || ''}
+                    onChange={(e) => setEditForm({ ...editForm, follow_up_date: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-mono border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Notes générales</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes || ''}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingContact(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                >
+                  {editSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {contactToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Supprimer le contact
+                </h3>
+                <p className="text-slate-500 text-[11px]">
+                  {contactToDelete.contact_name} {contactToDelete.company_name ? `(${contactToDelete.company_name})` : ''}
+                </p>
+              </div>
+            </div>
+
+            {deleteWarning ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 space-y-2">
+                <p className="font-medium">{deleteWarning}</p>
+                <p className="text-[11px] text-amber-700">
+                  Une suppression forcée supprimera définitivement le contact et l'ensemble de ses missions, contrats, devis et factures rattachées.
+                </p>
+              </div>
+            ) : (
+              <p className="text-slate-600">
+                Êtes-vous sûr de vouloir supprimer définitivement ce contact ? Cette opération est irréversible.
+              </p>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setContactToDelete(null);
+                  setDeleteWarning(null);
+                }}
+                className="w-full sm:w-auto px-3 py-1.5 text-slate-600 hover:text-slate-900"
+              >
+                Annuler
+              </button>
+
+              {deleteWarning && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleArchive({} as any, contactToDelete);
+                    setContactToDelete(null);
+                  }}
+                  className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium hover:bg-amber-100"
+                >
+                  Archiver plutôt
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleConfirmDelete(Boolean(deleteWarning))}
+                disabled={isDeleting}
+                className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 shadow-xs"
+              >
+                {isDeleting ? 'Suppression...' : (deleteWarning ? 'Confirmer suppression forcée' : 'Supprimer')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Convert Prospect Confirmation Modal */}
+      {contactToConvert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-emerald-600">
+              <Sparkles className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Convertir en Client officiel
+                </h3>
+                <p className="text-slate-500 text-[11px]">
+                  {contactToConvert.contact_name} {contactToConvert.company_name ? `(${contactToConvert.company_name})` : ''}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 space-y-1">
+              <p className="font-semibold text-xs">Conservation intégrale des données :</p>
+              <p className="text-[11px] text-emerald-700">
+                La conversion ne crée aucun doublon. L'ensemble de l'historique de prospection, des devis, des contrats, des missions et des échanges sera intégralement conservé sous le statut Client.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setContactToConvert(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={isConverting}
+                onClick={handleConfirmConvert}
+                className="px-4 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 shadow-xs"
+              >
+                {isConverting ? 'Conversion en cours...' : 'Confirmer la conversion'}
+              </button>
+            </div>
           </div>
         </div>
       )}

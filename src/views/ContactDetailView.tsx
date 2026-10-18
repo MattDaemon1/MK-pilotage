@@ -11,17 +11,21 @@ import {
   FileCheck2,
   ReceiptEuro,
   CheckSquare,
-  Edit,
   UserCheck,
   Plus,
   Calendar,
   AlertCircle,
   FileText,
   Trash2,
-  Archive
+  Archive,
+  ArchiveRestore,
+  Pencil,
+  AlertTriangle,
+  Sparkles,
+  CheckCircle
 } from 'lucide-react';
 import { api, formatEuro, formatDateFr, formatDuration } from '../services/api.ts';
-import { ContactDetailResponse, ContactStatus } from '../types/crm.ts';
+import { ContactDetailResponse, ContactStatus, Activity, Mission, Contract, Task, Quote, Invoice, Payment } from '../types/crm.ts';
 
 interface ContactDetailViewProps {
   contactId: number;
@@ -55,12 +59,32 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
   const [activityCategoryFilter, setActivityCategoryFilter] = useState('toutes');
   const [activityMissionFilter, setActivityMissionFilter] = useState<number | 'toutes'>('toutes');
 
+  // Notification toast/banner state
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   // Edit contact info modal state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
 
-  // New Mission for this client modal
+  // Delete & convert & archive modals for contact
+  const [isDeletingContact, setIsDeletingContact] = useState(false);
+  const [isDeletingSubmitting, setIsDeletingSubmitting] = useState(false);
+  const [isConvertingContact, setIsConvertingContact] = useState(false);
+  const [isArchivingContact, setIsArchivingContact] = useState(false);
+
+  // Activity modal states
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [activityToDelete, setActivityToDelete] = useState<Activity | null>(null);
+
+  // Mission modal states
   const [isNewMissionOpen, setIsNewMissionOpen] = useState(false);
   const [missionForm, setMissionForm] = useState({
     title: '',
@@ -72,8 +96,27 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     accepted_amount: 1500,
     time_budget_hours: 20
   });
+  const [editingMission, setEditingMission] = useState<Mission | null>(null);
+  const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
 
-  // New Task for this client modal
+  // Contract modal states
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
+
+  // Quote modal states
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [quoteEditForm, setQuoteEditForm] = useState<any>({});
+  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+
+  // Invoice modal states
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [invoiceEditForm, setInvoiceEditForm] = useState<any>({});
+  const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+
+  // Payment modal states
+  const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+
+  // Task modal states
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: '',
@@ -82,6 +125,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     task_type: 'technique',
     estimated_duration_minutes: 30
   });
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   useEffect(() => {
     loadContact();
@@ -92,7 +137,6 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     try {
       const res = await api.getContact(contactId);
       setData(res);
-      setEditForm(res.contact);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement du contact');
@@ -101,17 +145,27 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     }
   };
 
-  const handleConvert = async () => {
-    if (!data) return;
-    if (!window.confirm(`Confirmez-vous la conversion officielle de "${data.contact.contact_name}" en Client ? Tout l'historique et les devis seront conservés.`)) {
-      return;
-    }
-    try {
-      await api.convertProspectToClient(contactId);
-      loadContact();
-    } catch (err: any) {
-      alert(err.message);
-    }
+  const handleOpenEditContact = () => {
+    if (!data?.contact) return;
+    const c = data.contact;
+    setEditForm({
+      contact_name: c.contact_name || '',
+      company_name: c.company_name || '',
+      role_title: c.role_title || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      website: c.website || '',
+      address: c.address || '',
+      postal_code: c.postal_code || '',
+      city: c.city || '',
+      sector: c.sector || '',
+      lead_source: c.lead_source || 'prospection',
+      status: c.status || 'prospect',
+      notes: c.notes || '',
+      next_action: c.next_action || '',
+      follow_up_date: c.follow_up_date || ''
+    });
+    setIsEditing(true);
   };
 
   const handleSaveContactEdit = async (e: React.FormEvent) => {
@@ -120,14 +174,116 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     try {
       await api.updateContact(contactId, editForm);
       setIsEditing(false);
+      setNotification({
+        type: 'success',
+        message: `Fiche de ${editForm.contact_name || 'contact'} mise à jour avec succès.`
+      });
       loadContact();
     } catch (err: any) {
-      alert(err.message);
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la mise à jour'
+      });
     } finally {
       setEditSubmitting(false);
     }
   };
 
+  const handleConfirmConvert = async () => {
+    if (!data) return;
+    try {
+      await api.convertProspectToClient(contactId);
+      setIsConvertingContact(false);
+      setNotification({
+        type: 'success',
+        message: `"${data.contact.contact_name}" est désormais officiellement converti en Client !`
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la conversion'
+      });
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!data) return;
+    const willArchive = data.contact.is_archived === 0;
+    try {
+      await api.archiveContact(contactId, willArchive);
+      setIsArchivingContact(false);
+      setNotification({
+        type: 'success',
+        message: willArchive
+          ? `La fiche de ${data.contact.contact_name} a été archivée.`
+          : `La fiche de ${data.contact.contact_name} a été désarchivée.`
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || "Erreur lors de l'archivage"
+      });
+    }
+  };
+
+  const handleDeleteContact = async (force: boolean = false) => {
+    setIsDeletingSubmitting(true);
+    try {
+      await api.deleteContact(contactId, force);
+      setIsDeletingContact(false);
+      onBack();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression'
+      });
+      setIsDeletingContact(false);
+    } finally {
+      setIsDeletingSubmitting(false);
+    }
+  };
+
+  // Activity CRUD
+  const handleSaveActivityEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity) return;
+    try {
+      await api.updateActivity(editingActivity.id, editingActivity);
+      setEditingActivity(null);
+      setNotification({
+        type: 'success',
+        message: 'Activité mise à jour avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la modification de l\'activité'
+      });
+    }
+  };
+
+  const handleConfirmDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    try {
+      await api.deleteActivity(activityToDelete.id);
+      setActivityToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Activité supprimée du journal de travail.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression'
+      });
+    }
+  };
+
+  // Mission CRUD
   const handleCreateMission = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -146,12 +302,229 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
         accepted_amount: 1500,
         time_budget_hours: 20
       });
+      setNotification({
+        type: 'success',
+        message: 'Mission créée avec succès.'
+      });
       loadContact();
     } catch (err: any) {
-      alert(err.message);
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la création de la mission'
+      });
     }
   };
 
+  const handleSaveMissionEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMission) return;
+    try {
+      await api.updateMission(editingMission.id, editingMission);
+      setEditingMission(null);
+      setNotification({
+        type: 'success',
+        message: 'Mission mise à jour avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la modification de la mission'
+      });
+    }
+  };
+
+  const handleConfirmDeleteMission = async () => {
+    if (!missionToDelete) return;
+    try {
+      await api.deleteMission(missionToDelete.id);
+      setMissionToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Mission supprimée avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression de la mission'
+      });
+    }
+  };
+
+  // Contract CRUD
+  const handleSaveContractEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContract) return;
+    try {
+      await api.updateContract(editingContract.id, editingContract);
+      setEditingContract(null);
+      setNotification({
+        type: 'success',
+        message: 'Contrat mis à jour avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la modification du contrat'
+      });
+    }
+  };
+
+  const handleConfirmDeleteContract = async () => {
+    if (!contractToDelete) return;
+    try {
+      await api.deleteContract(contractToDelete.id);
+      setContractToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Contrat récurrent supprimé.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression'
+      });
+    }
+  };
+
+  // Finance: Quote CRUD
+  const handleOpenEditQuote = (q: Quote) => {
+    setEditingQuote(q);
+    setQuoteEditForm({
+      quote_number: q.quote_number,
+      issue_date: q.issue_date,
+      valid_until: q.valid_until || '',
+      amount_ht: q.amount_ht,
+      vat_rate: q.vat_rate,
+      amount_ttc: q.amount_ttc,
+      status: q.status,
+      notes: q.notes || '',
+      terms: q.terms || ''
+    });
+  };
+
+  const handleSaveQuoteEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQuote) return;
+    try {
+      await api.updateQuote(editingQuote.id, {
+        ...quoteEditForm,
+        amount_ht: Number(quoteEditForm.amount_ht),
+        vat_rate: Number(quoteEditForm.vat_rate),
+        amount_ttc: Number(quoteEditForm.amount_ttc)
+      });
+      setEditingQuote(null);
+      setNotification({
+        type: 'success',
+        message: `Devis "${quoteEditForm.quote_number}" mis à jour avec succès.`
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la mise à jour du devis'
+      });
+    }
+  };
+
+  const handleConfirmDeleteQuote = async () => {
+    if (!quoteToDelete) return;
+    try {
+      await api.deleteQuote(quoteToDelete.id);
+      setQuoteToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Devis supprimé avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression du devis'
+      });
+    }
+  };
+
+  // Finance: Invoice CRUD
+  const handleOpenEditInvoice = (inv: Invoice) => {
+    setEditingInvoice(inv);
+    setInvoiceEditForm({
+      invoice_number: inv.invoice_number,
+      issue_date: inv.issue_date,
+      due_date: inv.due_date,
+      amount_ht: inv.amount_ht,
+      vat_rate: inv.vat_rate,
+      amount_ttc: inv.amount_ttc,
+      payment_status: inv.payment_status,
+      notes: inv.notes || ''
+    });
+  };
+
+  const handleSaveInvoiceEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInvoice) return;
+    try {
+      await api.updateInvoice(editingInvoice.id, {
+        ...invoiceEditForm,
+        amount_ht: Number(invoiceEditForm.amount_ht),
+        vat_rate: Number(invoiceEditForm.vat_rate),
+        amount_ttc: Number(invoiceEditForm.amount_ttc)
+      });
+      setEditingInvoice(null);
+      setNotification({
+        type: 'success',
+        message: `Facture "${invoiceEditForm.invoice_number}" mise à jour avec succès.`
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la mise à jour de la facture'
+      });
+    }
+  };
+
+  const handleConfirmDeleteInvoice = async () => {
+    if (!invoiceToDelete) return;
+    try {
+      await api.deleteInvoice(invoiceToDelete.id);
+      setInvoiceToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Facture et règlements rattachés supprimés.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression de la facture'
+      });
+    }
+  };
+
+  // Finance: Payment CRUD
+  const handleConfirmDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    try {
+      await api.deletePayment(paymentToDelete.id);
+      setPaymentToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Règlement supprimé avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression du règlement'
+      });
+    }
+  };
+
+  // Task CRUD
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -167,9 +540,53 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
         task_type: 'technique',
         estimated_duration_minutes: 30
       });
+      setNotification({
+        type: 'success',
+        message: 'Tâche créée avec succès.'
+      });
       loadContact();
     } catch (err: any) {
-      alert(err.message);
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la création de la tâche'
+      });
+    }
+  };
+
+  const handleSaveTaskEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask) return;
+    try {
+      await api.updateTask(editingTask.id, editingTask);
+      setEditingTask(null);
+      setNotification({
+        type: 'success',
+        message: 'Tâche mise à jour avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la modification de la tâche'
+      });
+    }
+  };
+
+  const handleConfirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    try {
+      await api.deleteTask(taskToDelete.id);
+      setTaskToDelete(null);
+      setNotification({
+        type: 'success',
+        message: 'Tâche supprimée avec succès.'
+      });
+      loadContact();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la suppression'
+      });
     }
   };
 
@@ -177,9 +594,16 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     const newStatus = currentStatus === 'terminée' ? 'à faire' : 'terminée';
     try {
       await api.updateTask(taskId, { status: newStatus });
+      setNotification({
+        type: 'success',
+        message: `Tâche marquée comme ${newStatus}.`
+      });
       loadContact();
     } catch (err: any) {
-      alert(err.message);
+      setNotification({
+        type: 'error',
+        message: err.message || 'Erreur lors de la mise à jour de la tâche'
+      });
     }
   };
 
@@ -210,6 +634,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
 
   const { contact, metrics, activities, missions, contracts, quotes, invoices, payments, tasks } = data;
 
+  const hasHistory = (contact.active_missions_count || 0) > 0 || (contact.active_contracts_count || 0) > 0 || invoices.length > 0;
+
   // Filter activities for this contact
   const filteredActivities = activities.filter((a) => {
     if (activityCategoryFilter !== 'toutes' && a.category !== activityCategoryFilter) return false;
@@ -220,16 +646,16 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       {/* Top back & actions bar */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors self-start"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Retour à la liste des contacts</span>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {contact.status === 'prospect' && (
             <button
               onClick={handleConvert}
@@ -248,12 +674,32 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
             <span>Consigner une action</span>
           </button>
 
+          {/* Modifier */}
           <button
             onClick={() => setIsEditing(true)}
-            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-            title="Modifier les coordonnées"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs"
           >
-            <Edit className="w-3.5 h-3.5" />
+            <Pencil className="w-3.5 h-3.5 text-slate-500" />
+            <span>Modifier la fiche</span>
+          </button>
+
+          {/* Archiver / Désarchiver */}
+          <button
+            onClick={handleToggleArchive}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs"
+            title={contact.is_archived ? "Désarchiver" : "Archiver"}
+          >
+            {contact.is_archived ? <ArchiveRestore className="w-3.5 h-3.5 text-amber-600" /> : <Archive className="w-3.5 h-3.5 text-slate-500" />}
+            <span>{contact.is_archived ? 'Désarchiver' : 'Archiver'}</span>
+          </button>
+
+          {/* Supprimer */}
+          <button
+            onClick={() => setIsDeletingContact(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors shadow-xs"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Supprimer</span>
           </button>
         </div>
       </div>
@@ -275,6 +721,11 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
               }`}>
                 {contact.status === 'prospect' ? 'Prospect' : contact.status === 'client' ? 'Client' : contact.status}
               </span>
+              {contact.is_archived === 1 && (
+                <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Fiche archivée
+                </span>
+              )}
             </div>
 
             {contact.company_name && (
@@ -331,7 +782,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Top 6 Indicators Bar as mandated by user prompt */}
+        {/* Top 6 Indicators Bar */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-6 pt-4 border-t border-slate-100 text-center sm:text-left">
           <div>
             <div className="text-[10px] uppercase font-semibold text-slate-400">CA Facturé</div>
@@ -458,13 +909,22 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                           {m.service_category} · Statut : <span className="font-medium text-slate-700">{m.status}</span>
                         </div>
                       </div>
-                      <div className="text-right font-mono tabular-nums">
-                        <div className="text-xs font-semibold text-slate-900">
-                          {formatEuro(m.accepted_amount || m.estimated_amount)}
+                      <div className="flex items-center gap-3">
+                        <div className="text-right font-mono tabular-nums">
+                          <div className="text-xs font-semibold text-slate-900">
+                            {formatEuro(m.accepted_amount || m.estimated_amount)}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {m.actual_hours_spent || 0}h passées
+                          </div>
                         </div>
-                        <div className="text-[10px] text-slate-500">
-                          {m.actual_hours_spent || 0}h passées
-                        </div>
+                        <button
+                          onClick={() => setEditingMission(m)}
+                          className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                          title="Modifier la mission"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -496,20 +956,40 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                   {tasks.filter((t) => t.status !== 'terminée').map((t) => (
                     <div
                       key={t.id}
-                      onClick={() => handleToggleTask(t.id, t.status)}
-                      className="p-2 border border-slate-100 rounded-lg hover:bg-slate-50 cursor-pointer flex items-start gap-2"
+                      className="p-2 border border-slate-100 rounded-lg hover:bg-slate-50 flex items-start justify-between gap-2"
                     >
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        onChange={() => {}}
-                        className="mt-0.5 rounded text-indigo-600"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-slate-900 truncate">{t.title}</div>
-                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">
-                          Échéance : {formatDateFr(t.due_date)}
+                      <div
+                        onClick={() => handleToggleTask(t.id, t.status)}
+                        className="flex items-start gap-2 cursor-pointer flex-1 min-w-0"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => {}}
+                          className="mt-0.5 rounded text-indigo-600"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium text-slate-900 truncate">{t.title}</div>
+                          <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                            Échéance : {formatDateFr(t.due_date)}
+                          </div>
                         </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setEditingTask(t)}
+                          className="p-1 text-slate-400 hover:text-indigo-600"
+                          title="Modifier tâche"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(t.id)}
+                          className="p-1 text-slate-400 hover:text-red-600"
+                          title="Supprimer tâche"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -550,13 +1030,22 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         <p className="text-xs text-slate-600 mt-1 max-w-2xl">{a.description}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-mono font-medium text-slate-700">
-                        {formatDuration(a.duration_minutes)}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-mono font-medium text-slate-700">
+                          {formatDuration(a.duration_minutes)}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {formatDateFr(a.activity_date)}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400">
-                        {formatDateFr(a.activity_date)}
-                      </div>
+                      <button
+                        onClick={() => setEditingActivity(a)}
+                        className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                        title="Modifier activité"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -566,7 +1055,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: Historique des activités (Full filterable journal) */}
+      {/* Tab 2: Historique des activités */}
       {activeTab === 'activities' && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -637,12 +1126,30 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-mono font-bold text-slate-800">
-                      {formatDuration(a.duration_minutes)}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div className="text-xs font-mono font-bold text-slate-800">
+                        {formatDuration(a.duration_minutes)}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        {formatDateFr(a.activity_date)} {a.activity_time || ''}
+                      </div>
                     </div>
-                    <div className="text-[10px] font-mono text-slate-400 mt-0.5">
-                      {formatDateFr(a.activity_date)} {a.activity_time || ''}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEditingActivity(a)}
+                        className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                        title="Modifier cette activité"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteActivity(a.id)}
+                        className="p-1 text-slate-400 hover:text-red-600 rounded"
+                        title="Supprimer cette activité"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -689,12 +1196,30 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         {m.service_category} · Statut : <span className="font-semibold text-slate-800">{m.status}</span>
                       </div>
                     </div>
-                    <div className="text-right font-mono tabular-nums">
-                      <div className="text-xs font-bold text-slate-900">
-                        {formatEuro(m.accepted_amount || m.estimated_amount)}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right font-mono tabular-nums">
+                        <div className="text-xs font-bold text-slate-900">
+                          {formatEuro(m.accepted_amount || m.estimated_amount)}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Facturé : {formatEuro(m.billed_amount || 0)} · Encaissé : {formatEuro(m.paid_amount || 0)}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-500">
-                        Facturé : {formatEuro(m.billed_amount || 0)} · Encaissé : {formatEuro(m.paid_amount || 0)}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setEditingMission(m)}
+                          className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                          title="Modifier la mission"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMission(m.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          title="Supprimer la mission"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -750,15 +1275,33 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         Fréquence : {c.frequency} · Statut : <span className="font-semibold text-emerald-700">{c.status}</span>
                       </div>
                     </div>
-                    <div className="text-right font-mono tabular-nums">
-                      <div className="text-sm font-bold text-slate-900">
-                        {formatEuro(c.amount_per_period)} / {c.frequency}
-                      </div>
-                      {c.next_renewal_date && (
-                        <div className="text-[10px] text-amber-700">
-                          Renouvellement : {formatDateFr(c.next_renewal_date)}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right font-mono tabular-nums">
+                        <div className="text-sm font-bold text-slate-900">
+                          {formatEuro(c.amount_per_period)} / {c.frequency}
                         </div>
-                      )}
+                        {c.next_renewal_date && (
+                          <div className="text-[10px] text-amber-700">
+                            Renouvellement : {formatDateFr(c.next_renewal_date)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setEditingContract(c)}
+                          className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                          title="Modifier le contrat"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteContract(c.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          title="Supprimer le contrat"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   {c.description && (
@@ -790,6 +1333,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                     <th className="py-2">Mission</th>
                     <th className="py-2">Montant TTC</th>
                     <th className="py-2">Statut</th>
+                    <th className="py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -804,6 +1348,15 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                           {q.status}
                         </span>
                       </td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleDeleteQuote(q.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          title="Supprimer ce devis"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -814,7 +1367,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           {/* Invoices */}
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
-              Factures & Règlements ({invoices.length})
+              Factures ({invoices.length})
             </h3>
             {invoices.length === 0 ? (
               <p className="text-xs text-slate-400 py-3">Aucune facture émise.</p>
@@ -828,6 +1381,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                     <th className="py-2">Montant TTC</th>
                     <th className="py-2">Encaissé</th>
                     <th className="py-2">Statut paiement</th>
+                    <th className="py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -843,12 +1397,60 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                           {inv.payment_status}
                         </span>
                       </td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleDeleteInvoice(inv.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          title="Supprimer cette facture"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </div>
+
+          {/* Payments */}
+          {payments.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
+                Règlements reçus ({payments.length})
+              </h3>
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-slate-400 text-[10px] uppercase border-b border-slate-100">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Facture</th>
+                    <th className="py-2">Mode</th>
+                    <th className="py-2">Montant</th>
+                    <th className="py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.map((p) => (
+                    <tr key={p.id}>
+                      <td className="py-2 font-mono text-slate-600">{formatDateFr(p.payment_date)}</td>
+                      <td className="py-2 font-mono font-bold text-slate-900">{p.invoice_number}</td>
+                      <td className="py-2 text-slate-600">{p.payment_method}</td>
+                      <td className="py-2 font-mono font-bold text-emerald-600">{formatEuro(p.amount)}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleDeletePayment(p.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          title="Supprimer ce règlement"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -879,9 +1481,18 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                   <div className="font-semibold text-slate-900">{a.title}</div>
                   <div className="text-[11px] text-slate-500">{a.category} {a.mission_title ? `· ${a.mission_title}` : ''}</div>
                 </div>
-                <div className="text-right font-mono tabular-nums">
-                  <div className="font-bold text-slate-900">{formatDuration(a.duration_minutes)}</div>
-                  <div className="text-[10px] text-slate-400">{formatDateFr(a.activity_date)}</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right font-mono tabular-nums">
+                    <div className="font-bold text-slate-900">{formatDuration(a.duration_minutes)}</div>
+                    <div className="text-[10px] text-slate-400">{formatDateFr(a.activity_date)}</div>
+                  </div>
+                  <button
+                    onClick={() => setEditingActivity(a)}
+                    className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                    title="Modifier"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -922,15 +1533,15 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                     t.status === 'terminée' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-white border-slate-200'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <input
                       type="checkbox"
                       checked={t.status === 'terminée'}
                       onChange={() => handleToggleTask(t.id, t.status)}
                       className="mt-0.5 rounded text-indigo-600 cursor-pointer"
                     />
-                    <div>
-                      <div className={`text-xs font-semibold ${t.status === 'terminée' ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                    <div className="min-w-0">
+                      <div className={`text-xs font-semibold truncate ${t.status === 'terminée' ? 'line-through text-slate-400' : 'text-slate-900'}`}>
                         {t.title}
                       </div>
                       <div className="text-[11px] text-slate-500 mt-0.5">
@@ -938,11 +1549,29 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="text-right font-mono tabular-nums text-xs">
-                    <div className={t.status === 'terminée' ? 'text-slate-400' : 'text-indigo-600 font-semibold'}>
-                      {formatDateFr(t.due_date)}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right font-mono tabular-nums text-xs">
+                      <div className={t.status === 'terminée' ? 'text-slate-400' : 'text-indigo-600 font-semibold'}>
+                        {formatDateFr(t.due_date)}
+                      </div>
+                      <div className="text-[10px] text-slate-400">{t.status}</div>
                     </div>
-                    <div className="text-[10px] text-slate-400">{t.status}</div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEditingTask(t)}
+                        className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                        title="Modifier tâche"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTask(t.id)}
+                        className="p-1 text-slate-400 hover:text-red-600 rounded"
+                        title="Supprimer tâche"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1110,6 +1739,386 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                   className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
                 >
                   Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Contact */}
+      {isDeletingContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Supprimer la fiche de {contact.contact_name}
+                </h3>
+                <p className="text-slate-500 text-[11px]">
+                  {contact.company_name || 'Contact'}
+                </p>
+              </div>
+            </div>
+
+            {hasHistory ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 space-y-2">
+                <p className="font-medium">
+                  Attention : ce contact possède des missions, contrats ou factures rattachées.
+                </p>
+                <p className="text-[11px]">
+                  Il est vivement conseillé d'<strong>archiver</strong> la fiche pour conserver les bilans comptables. Si vous confirmez la suppression forcée, tout sera définitivement effacé.
+                </p>
+              </div>
+            ) : (
+              <p className="text-slate-600">
+                Êtes-vous sûr de vouloir supprimer définitivement ce contact ? Cette action est irréversible.
+              </p>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsDeletingContact(false)}
+                className="w-full sm:w-auto px-3 py-1.5 text-slate-600 hover:text-slate-900"
+              >
+                Annuler
+              </button>
+              {hasHistory && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleArchive();
+                    setIsDeletingContact(false);
+                  }}
+                  className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium hover:bg-amber-100"
+                >
+                  Archiver plutôt
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleDeleteContact(hasHistory)}
+                className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 shadow-xs"
+              >
+                {hasHistory ? 'Confirmer suppression forcée' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Activity */}
+      {editingActivity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier l'activité</h3>
+              <button onClick={() => setEditingActivity(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveActivityEdit} className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Titre</label>
+                <input
+                  type="text"
+                  required
+                  value={editingActivity.title}
+                  onChange={(e) => setEditingActivity({ ...editingActivity, title: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Durée (minutes)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={editingActivity.duration_minutes}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, duration_minutes: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={editingActivity.activity_date}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, activity_date: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={editingActivity.description || ''}
+                  onChange={(e) => setEditingActivity({ ...editingActivity, description: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingActivity(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                >
+                  Mettre à jour
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Mission */}
+      {editingMission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier la mission</h3>
+              <button onClick={() => setEditingMission(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveMissionEdit} className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Titre de la mission</label>
+                <input
+                  type="text"
+                  required
+                  value={editingMission.title}
+                  onChange={(e) => setEditingMission({ ...editingMission, title: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Catégorie</label>
+                  <input
+                    type="text"
+                    value={editingMission.service_category}
+                    onChange={(e) => setEditingMission({ ...editingMission, service_category: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
+                  <select
+                    value={editingMission.status}
+                    onChange={(e) => setEditingMission({ ...editingMission, status: e.target.value as any })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                  >
+                    <option value="à cadrer">à cadrer</option>
+                    <option value="à chiffrer">à chiffrer</option>
+                    <option value="devis envoyé">devis envoyé</option>
+                    <option value="en attente">en attente</option>
+                    <option value="planifiée">planifiée</option>
+                    <option value="en cours">en cours</option>
+                    <option value="en pause">en pause</option>
+                    <option value="livrée">livrée</option>
+                    <option value="clôturée">clôturée</option>
+                    <option value="annulée">annulée</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant accepté (€)</label>
+                  <input
+                    type="number"
+                    step="50"
+                    value={editingMission.accepted_amount}
+                    onChange={(e) => setEditingMission({ ...editingMission, accepted_amount: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Budget temps (heures)</label>
+                  <input
+                    type="number"
+                    value={editingMission.time_budget_hours}
+                    onChange={(e) => setEditingMission({ ...editingMission, time_budget_hours: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingMission(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                >
+                  Mettre à jour
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Contract */}
+      {editingContract && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier le contrat</h3>
+              <button onClick={() => setEditingContract(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveContractEdit} className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Intitulé</label>
+                <input
+                  type="text"
+                  required
+                  value={editingContract.title}
+                  onChange={(e) => setEditingContract({ ...editingContract, title: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant par période (€)</label>
+                  <input
+                    type="number"
+                    step="10"
+                    value={editingContract.amount_per_period}
+                    onChange={(e) => setEditingContract({ ...editingContract, amount_per_period: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
+                  <select
+                    value={editingContract.status}
+                    onChange={(e) => setEditingContract({ ...editingContract, status: e.target.value as any })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                  >
+                    <option value="actif">Actif</option>
+                    <option value="en attente">En attente</option>
+                    <option value="brouillon">Brouillon</option>
+                    <option value="suspendu">Suspendu</option>
+                    <option value="résilié">Résilié</option>
+                    <option value="expiré">Expiré</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingContract(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                >
+                  Mettre à jour
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Task */}
+      {editingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier la tâche</h3>
+              <button onClick={() => setEditingTask(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveTaskEdit} className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Titre</label>
+                <input
+                  type="text"
+                  required
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Échéance</label>
+                  <input
+                    type="date"
+                    value={editingTask.due_date || ''}
+                    onChange={(e) => setEditingTask({ ...editingTask, due_date: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Priorité</label>
+                  <select
+                    value={editingTask.priority}
+                    onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as any })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                  >
+                    <option value="normale">Normale</option>
+                    <option value="haute">Haute</option>
+                    <option value="urgente">Urgente</option>
+                    <option value="basse">Basse</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Statut</label>
+                <select
+                  value={editingTask.status}
+                  onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as any })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                >
+                  <option value="à faire">À faire</option>
+                  <option value="en cours">En cours</option>
+                  <option value="terminée">Terminée</option>
+                  <option value="annulée">Annulée</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingTask(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                >
+                  Mettre à jour
                 </button>
               </div>
             </form>
