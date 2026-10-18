@@ -1,0 +1,6 @@
+{
+  "name": "Matt Konnect CRM",
+  "description": "Application CRM et de pilotage d'activité complète pour Matt Konnect : contacts, journal d'activité rapide, missions, contrats récurrents, devis, factures, temps passé et sauvegardes SQLite.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
