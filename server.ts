@@ -1729,7 +1729,7 @@ app.post('/api/backup/restore', (req, res) => {
 app.post('/api/backup/reset-demo', (req, res) => {
   try {
     resetDemoDatabase();
-    res.json({ success: true, message: 'Base de données réinitialisée avec les données de démonstration.' });
+    res.json({ success: true, message: 'Base de données réinitialisée à zéro (base propre et vide).' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

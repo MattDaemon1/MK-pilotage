@@ -70,10 +70,10 @@ export const SettingsBackupView: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
           Sauvegardes, Exports & Paramètres
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
@@ -209,25 +209,25 @@ export const SettingsBackupView: React.FC = () => {
         </div>
       </div>
 
-      {/* Card 3: Réinitialisation & Démonstration */}
+      {/* Card 3: Remise à zéro de la base */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
         <div className="flex items-center gap-2.5">
-          <RotateCcw className="w-5 h-5 text-amber-600" />
+          <RotateCcw className="w-5 h-5 text-red-600" />
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
-              Jeu de données de test Matt Konnect
+              Remise à zéro de la base (base vierge)
             </h2>
             <p className="text-[11px] text-slate-500">
-              Réinitialise la base locale avec les exemples complets (prospects, clients, refonte web, contrats maintenance)
+              Efface toutes les données (contacts, missions, factures, devis, contrats, tâches) pour repartir sur une base complètement propre sans données d'exemple.
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setShowResetConfirm(true)}
-          className="px-3.5 py-2 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer"
+          className="px-3.5 py-2 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer"
         >
-          Recharger les données d'exemple Matt Konnect
+          Remettre la base à zéro (base vierge)
         </button>
       </div>
 
@@ -249,14 +249,14 @@ export const SettingsBackupView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPendingRestoreFile(null)}
-                className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 type="button"
                 onClick={executeRestore}
-                className="px-4 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700"
+                className="px-4 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 cursor-pointer"
               >
                 Confirmer la restauration
               </button>
@@ -265,34 +265,34 @@ export const SettingsBackupView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Confirm Reset Demo */}
+      {/* Modal: Confirm Reset Clean Base */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
-            <div className="flex items-center gap-3 text-amber-600">
+            <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Réinitialiser avec les données d'exemple ?</h3>
+                <h3 className="text-sm font-bold text-slate-900">Remettre la base à zéro ?</h3>
                 <p className="text-slate-500 text-[11px]">Base locale SQLite</p>
               </div>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              Voulez-vous recharger le jeu de données d'exemple Matt Konnect ? Les modifications non exportées seront écrasées.
+              Voulez-vous réinitialiser la base à zéro ? Toutes les données seront effacées et la base redeviendra totalement vierge (sans aucune donnée d'exemple).
             </p>
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
-                className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 type="button"
                 onClick={executeResetDemo}
-                className="px-4 py-1.5 bg-amber-600 text-white rounded font-medium hover:bg-amber-700"
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
               >
-                Confirmer le rechargement
+                Confirmer la remise à zéro
               </button>
             </div>
           </div>

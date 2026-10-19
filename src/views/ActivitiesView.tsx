@@ -142,7 +142,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const totalMinutes = activities.reduce((sum, a) => sum + (a.duration_minutes || 0), 0);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -300,7 +300,64 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-xs">
+        <>
+          {/* Mobile Cards (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {activities.map((a) => (
+              <div key={a.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-wider block">
+                      {formatDateFr(a.activity_date)} {a.activity_time ? `à ${a.activity_time.slice(0, 5)}` : ''}
+                    </span>
+                    <h4 className="font-semibold text-slate-900 text-sm mt-0.5">{a.title}</h4>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold font-mono text-xs border border-indigo-100">
+                      {formatDuration(a.duration_minutes)}
+                    </span>
+                  </div>
+                </div>
+
+                {a.description && (
+                  <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line leading-relaxed">
+                    {a.description}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
+                      {a.category}
+                    </span>
+                    {a.company_name && (
+                      <span className="text-slate-600 text-[11px] truncate max-w-[120px]">
+                        {a.company_name}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setEditingActivity(a)}
+                      className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg cursor-pointer"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => setActivityToDelete(a)}
+                      className="px-2.5 py-1 text-xs font-medium text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table (hidden md:block) */}
+          <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-xs">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold text-[10px]">
               <tr>
@@ -406,6 +463,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Edit Activity Modal */}
@@ -487,7 +545,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   <label className="block font-semibold text-slate-700 mb-1">Client associé</label>
                   <select
                     value={editingActivity.contact_id || ''}
-                    onChange={(e) => setEditingActivity({ ...editingActivity, contact_id: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, contact_id: e.target.value ? Number(e.target.value) : null })}
                     className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
                   >
                     <option value="">— Aucun (Interne) —</option>
@@ -502,7 +560,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   <label className="block font-semibold text-slate-700 mb-1">Mission liée</label>
                   <select
                     value={editingActivity.mission_id || ''}
-                    onChange={(e) => setEditingActivity({ ...editingActivity, mission_id: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, mission_id: e.target.value ? Number(e.target.value) : null })}
                     className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
                   >
                     <option value="">— Aucune mission liée —</option>

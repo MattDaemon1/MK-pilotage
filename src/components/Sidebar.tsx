@@ -9,7 +9,8 @@ import {
   CheckSquare,
   Search,
   Settings,
-  Terminal
+  Terminal,
+  X
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -32,12 +33,16 @@ interface SidebarProps {
     pendingQuotes?: number;
     renewingContracts?: number;
   };
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onTabChange,
-  counts
+  counts,
+  isMobileOpen,
+  onCloseMobile
 }) => {
   const navItems: Array<{ id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -52,10 +57,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'python', label: 'Code Python & Windows', icon: <Terminal className="w-4 h-4" /> },
   ];
 
-  return (
-    <aside className="w-64 shrink-0 bg-slate-900 text-slate-300 flex flex-col h-screen border-r border-slate-800 select-none">
+  const handleSelectTab = (tab: ActiveTab) => {
+    onTabChange(tab);
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  const navContent = (
+    <>
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800/80">
+      <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm tracking-wider shadow-inner">
             MK
@@ -69,6 +79,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
         </div>
+        {onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+            title="Fermer le menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation list */}
@@ -82,8 +101,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors text-left ${
+              onClick={() => handleSelectTab(item.id)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 sm:py-2 text-xs font-medium rounded-lg transition-colors text-left cursor-pointer ${
                 isActive
                   ? 'bg-indigo-600/90 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -118,6 +137,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-emerald-400 font-medium">Monoposte Windows / Web</span>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (hidden on mobile) */}
+      <aside className="hidden md:flex w-64 shrink-0 bg-slate-900 text-slate-300 flex-col h-screen border-r border-slate-800 select-none">
+        {navContent}
+      </aside>
+
+      {/* Mobile Drawer (visible only on mobile when opened) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+          />
+
+          {/* Drawer panel */}
+          <aside className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-slate-900 text-slate-300 flex flex-col z-50 shadow-2xl border-r border-slate-800 select-none animate-in slide-in-from-left duration-200">
+            {navContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };

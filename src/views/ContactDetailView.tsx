@@ -644,7 +644,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Top back & actions bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button
@@ -658,8 +658,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           {contact.status === 'prospect' && (
             <button
-              onClick={handleConvert}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors shadow-xs"
+              onClick={() => setIsConvertingContact(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors shadow-xs cursor-pointer"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Convertir en Client</span>
@@ -668,7 +668,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
 
           <button
             onClick={() => onOpenQuickLog(contact.id)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Consigner une action</span>
@@ -676,8 +676,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
 
           {/* Modifier */}
           <button
-            onClick={() => setIsEditing(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs"
+            onClick={handleOpenEditContact}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs cursor-pointer"
           >
             <Pencil className="w-3.5 h-3.5 text-slate-500" />
             <span>Modifier la fiche</span>
@@ -685,8 +685,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
 
           {/* Archiver / Désarchiver */}
           <button
-            onClick={handleToggleArchive}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs"
+            onClick={() => setIsArchivingContact(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-xs cursor-pointer"
             title={contact.is_archived ? "Désarchiver" : "Archiver"}
           >
             {contact.is_archived ? <ArchiveRestore className="w-3.5 h-3.5 text-amber-600" /> : <Archive className="w-3.5 h-3.5 text-slate-500" />}
@@ -696,13 +696,39 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           {/* Supprimer */}
           <button
             onClick={() => setIsDeletingContact(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors shadow-xs cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Supprimer</span>
           </button>
         </div>
       </div>
+
+      {/* Notification Banner */}
+      {notification && (
+        <div
+          className={`px-4 py-3 rounded-lg border text-xs font-medium flex items-center justify-between transition-all ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-600 text-base leading-none ml-4"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Contact Profile Header */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
@@ -847,8 +873,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
       </div>
 
       {/* 8 Central Tabs Navigation */}
-      <div className="border-b border-slate-200">
-        <nav className="flex items-center gap-1 overflow-x-auto pb-px">
+      <div className="border-b border-slate-200 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <nav className="flex items-center gap-1 overflow-x-auto pb-px scrollbar-none">
           {[
             { id: 'overview', label: 'Vue d’ensemble' },
             { id: 'activities', label: `Journal d'activités (${activities.length})` },
@@ -984,8 +1010,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                           <Pencil className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => handleDeleteTask(t.id)}
-                          className="p-1 text-slate-400 hover:text-red-600"
+                          onClick={() => setTaskToDelete(t)}
+                          className="p-1 text-slate-400 hover:text-red-600 cursor-pointer"
                           title="Supprimer tâche"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -1144,8 +1170,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteActivity(a.id)}
-                        className="p-1 text-slate-400 hover:text-red-600 rounded"
+                        onClick={() => setActivityToDelete(a)}
+                        className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                         title="Supprimer cette activité"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1173,7 +1199,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
             </div>
             <button
               onClick={() => setIsNewMissionOpen(true)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors cursor-pointer"
             >
               + Nouvelle mission
             </button>
@@ -1208,14 +1234,14 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setEditingMission(m)}
-                          className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                          className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
                           title="Modifier la mission"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteMission(m.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          onClick={() => setMissionToDelete(m)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                           title="Supprimer la mission"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1232,7 +1258,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                     </span>
                     <button
                       onClick={() => onOpenQuickLog(contactId, m.id)}
-                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                      className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
                     >
                       + Consigner du travail sur cette mission
                     </button>
@@ -1289,14 +1315,14 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setEditingContract(c)}
-                          className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                          className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
                           title="Modifier le contrat"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteContract(c.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          onClick={() => setContractToDelete(c)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                           title="Supprimer le contrat"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1349,13 +1375,22 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         </span>
                       </td>
                       <td className="py-2 text-right">
-                        <button
-                          onClick={() => handleDeleteQuote(q.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 rounded"
-                          title="Supprimer ce devis"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditQuote(q)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
+                            title="Modifier ce devis"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setQuoteToDelete(q)}
+                            className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                            title="Supprimer ce devis"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1398,13 +1433,22 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                         </span>
                       </td>
                       <td className="py-2 text-right">
-                        <button
-                          onClick={() => handleDeleteInvoice(inv.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 rounded"
-                          title="Supprimer cette facture"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditInvoice(inv)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
+                            title="Modifier cette facture"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setInvoiceToDelete(inv)}
+                            className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+                            title="Supprimer cette facture"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1438,8 +1482,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                       <td className="py-2 font-mono font-bold text-emerald-600">{formatEuro(p.amount)}</td>
                       <td className="py-2 text-right">
                         <button
-                          onClick={() => handleDeletePayment(p.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 rounded"
+                          onClick={() => setPaymentToDelete(p)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                           title="Supprimer ce règlement"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1468,7 +1512,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
             </div>
             <button
               onClick={() => onOpenQuickLog(contactId)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors cursor-pointer"
             >
               + Consigner du temps
             </button>
@@ -1488,7 +1532,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                   </div>
                   <button
                     onClick={() => setEditingActivity(a)}
-                    className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                    className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
                     title="Modifier"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -1514,7 +1558,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
             </div>
             <button
               onClick={() => setIsNewTaskOpen(true)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors cursor-pointer"
             >
               + Nouvelle tâche
             </button>
@@ -1559,14 +1603,14 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setEditingTask(t)}
-                        className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                        className="p-1 text-slate-400 hover:text-indigo-600 rounded cursor-pointer"
                         title="Modifier tâche"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteTask(t.id)}
-                        className="p-1 text-slate-400 hover:text-red-600 rounded"
+                        onClick={() => setTaskToDelete(t)}
+                        className="p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
                         title="Supprimer tâche"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1588,8 +1632,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
               Notes générales & Informations détaillées
             </h3>
             <button
-              onClick={() => setIsEditing(true)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+              onClick={handleOpenEditContact}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
             >
               Modifier
             </button>
@@ -1619,126 +1663,218 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
       {/* Modal: Edit Contact */}
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 space-y-4 text-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-900">Modifier la fiche contact</h3>
-              <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Modifier la fiche contact / client</h3>
+                <p className="text-[11px] text-slate-500">Mettez à jour les coordonnées, statuts et informations clés</p>
+              </div>
+              <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleSaveContactEdit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Nom du contact</label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.contact_name || ''}
-                    onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
+            <form onSubmit={handleSaveContactEdit} className="space-y-4">
+              {/* Section 1: Identité */}
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider text-slate-400">Identité & Statut commercial</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Nom du contact *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.contact_name || ''}
+                      onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Nom de l'entreprise</label>
+                    <input
+                      type="text"
+                      value={editForm.company_name || ''}
+                      onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Entreprise</label>
-                  <input
-                    type="text"
-                    value={editForm.company_name || ''}
-                    onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Statut commercial</label>
+                    <select
+                      value={editForm.status || 'prospect'}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="prospect">Prospect</option>
+                      <option value="client">Client</option>
+                      <option value="client_inactif">Client inactif</option>
+                      <option value="partenaire">Partenaire</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Fonction / Titre</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Dirigeant, Responsable Marketing..."
+                      value={editForm.role_title || ''}
+                      onChange={(e) => setEditForm({ ...editForm, role_title: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
-                  <select
-                    value={editForm.status || 'prospect'}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
-                  >
-                    <option value="prospect">Prospect</option>
-                    <option value="client">Client</option>
-                    <option value="partenaire">Partenaire</option>
-                    <option value="client_inactif">Client inactif</option>
-                  </select>
+              {/* Section 2: Coordonnées & Activité */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Coordonnées & Secteur</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Adresse e-mail</label>
+                    <input
+                      type="email"
+                      value={editForm.email || ''}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Téléphone</label>
+                    <input
+                      type="tel"
+                      value={editForm.phone || ''}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Fonction</label>
-                  <input
-                    type="text"
-                    value={editForm.role_title || ''}
-                    onChange={(e) => setEditForm({ ...editForm, role_title: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Site Web</label>
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={editForm.website || ''}
+                      onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Secteur d'activité</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: E-commerce, Immobilier, BTP..."
+                      value={editForm.sector || ''}
+                      onChange={(e) => setEditForm({ ...editForm, sector: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Origine du contact</label>
+                    <select
+                      value={editForm.lead_source || 'prospection'}
+                      onChange={(e) => setEditForm({ ...editForm, lead_source: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="prospection">Prospection</option>
+                      <option value="recommandation">Recommandation</option>
+                      <option value="site web">Site web</option>
+                      <option value="réseau">Réseau</option>
+                      <option value="autre">Autre</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={editForm.email || ''}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Téléphone</label>
-                  <input
-                    type="tel"
-                    value={editForm.phone || ''}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Prochaine action</label>
-                  <input
-                    type="text"
-                    value={editForm.next_action || ''}
-                    onChange={(e) => setEditForm({ ...editForm, next_action: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Date relance</label>
-                  <input
-                    type="date"
-                    value={editForm.follow_up_date || ''}
-                    onChange={(e) => setEditForm({ ...editForm, follow_up_date: e.target.value })}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                  />
+              {/* Section 3: Adresse */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Localisation</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-3">
+                    <label className="block font-semibold text-slate-700 mb-1">Adresse</label>
+                    <input
+                      type="text"
+                      placeholder="Numéro et nom de rue"
+                      value={editForm.address || ''}
+                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Code postal</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 75001"
+                      value={editForm.postal_code || ''}
+                      onChange={(e) => setEditForm({ ...editForm, postal_code: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-slate-700 mb-1">Ville</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Paris"
+                      value={editForm.city || ''}
+                      onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Notes</label>
-                <textarea
-                  rows={3}
-                  value={editForm.notes || ''}
-                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
-                />
+              {/* Section 4: Suivi commercial & Notes */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Relance & Notes</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Prochaine action</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Envoyer devis révisé, appeler pour démo..."
+                      value={editForm.next_action || ''}
+                      onChange={(e) => setEditForm({ ...editForm, next_action: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Date de relance</label>
+                    <input
+                      type="date"
+                      value={editForm.follow_up_date || ''}
+                      onChange={(e) => setEditForm({ ...editForm, follow_up_date: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Notes générales</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Contexte, besoins spécifiques, historique particulier..."
+                    value={editForm.notes || ''}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={editSubmitting}
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
-                  Enregistrer
+                  {editSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
               </div>
             </form>
@@ -1781,7 +1917,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsDeletingContact(false)}
-                className="w-full sm:w-auto px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                className="w-full sm:w-auto px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 Annuler
               </button>
@@ -1789,20 +1925,608 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    handleToggleArchive();
+                    handleConfirmArchive();
                     setIsDeletingContact(false);
                   }}
-                  className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium hover:bg-amber-100"
+                  className="w-full sm:w-auto px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium hover:bg-amber-100 cursor-pointer"
                 >
                   Archiver plutôt
                 </button>
               )}
               <button
                 type="button"
+                disabled={isDeletingSubmitting}
                 onClick={() => handleDeleteContact(hasHistory)}
-                className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 shadow-xs"
+                className="w-full sm:w-auto px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 shadow-xs cursor-pointer"
               >
-                {hasHistory ? 'Confirmer suppression forcée' : 'Supprimer'}
+                {isDeletingSubmitting ? 'Suppression...' : hasHistory ? 'Confirmer suppression forcée' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Convert Prospect */}
+      {isConvertingContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-emerald-600">
+              <Sparkles className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Convertir en Client officiel
+                </h3>
+                <p className="text-slate-500 text-[11px]">
+                  {contact.contact_name} {contact.company_name ? `(${contact.company_name})` : ''}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 space-y-1 text-xs">
+              <p className="font-semibold">Conversion sans doublon ni perte :</p>
+              <p className="text-[11px] leading-relaxed">
+                Toutes les activités du journal, rendez-vous, devis, missions et contrats rattachés à ce prospect sont intégralement conservés sous son nouveau statut Client.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsConvertingContact(false)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmConvert}
+                className="px-4 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 cursor-pointer shadow-xs"
+              >
+                Confirmer la conversion en Client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Archive Contact */}
+      {isArchivingContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-amber-600">
+              {contact.is_archived === 1 ? (
+                <ArchiveRestore className="w-6 h-6 shrink-0" />
+              ) : (
+                <Archive className="w-6 h-6 shrink-0" />
+              )}
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {contact.is_archived === 1 ? 'Désarchiver le contact' : 'Archiver la fiche contact'}
+                </h3>
+                <p className="text-slate-500 text-[11px]">{contact.contact_name}</p>
+              </div>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              {contact.is_archived === 1
+                ? 'Le contact réapparaîtra dans la liste principale des contacts actifs.'
+                : 'La fiche ne sera plus affichée dans la liste principale, mais l\'ensemble de l\'historique, des missions et des factures restera consultable.'}
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsArchivingContact(false)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmArchive}
+                className="px-4 py-1.5 bg-amber-600 text-white rounded font-medium hover:bg-amber-700 cursor-pointer"
+              >
+                {contact.is_archived === 1 ? 'Confirmer le désarchivage' : 'Confirmer l\'archivage'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Activity */}
+      {activityToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer l'action du journal</h3>
+                <p className="text-slate-500 text-[11px] truncate max-w-xs">{activityToDelete.title}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Êtes-vous sûr de vouloir supprimer cette entrée ? Le temps passé associé sera déduit des statistiques.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActivityToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteActivity}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Mission */}
+      {missionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer la mission</h3>
+                <p className="text-slate-500 text-[11px] truncate max-w-xs">{missionToDelete.title}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Êtes-vous sûr de vouloir supprimer cette mission ? Les devis, factures et tâches associés seront également dissociés.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setMissionToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteMission}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer la mission
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Contract */}
+      {contractToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer le contrat récurrent</h3>
+                <p className="text-slate-500 text-[11px] truncate max-w-xs">{contractToDelete.title}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Êtes-vous sûr de vouloir supprimer ce contrat ? Pour une résiliation normale, il est recommandé de passer le statut à "résilié".
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setContractToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteContract}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer le contrat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Quote */}
+      {editingQuote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier le devis {editingQuote.quote_number}</h3>
+              <button onClick={() => setEditingQuote(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveQuoteEdit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Réf. Devis</label>
+                  <input
+                    type="text"
+                    required
+                    value={quoteEditForm.quote_number || ''}
+                    onChange={(e) => setQuoteEditForm({ ...quoteEditForm, quote_number: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Statut</label>
+                  <select
+                    value={quoteEditForm.status || 'envoyé'}
+                    onChange={(e) => setQuoteEditForm({ ...quoteEditForm, status: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                  >
+                    <option value="brouillon">Brouillon</option>
+                    <option value="envoyé">Envoyé</option>
+                    <option value="accepté">Accepté</option>
+                    <option value="refusé">Refusé</option>
+                    <option value="expiré">Expiré</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date d'émission</label>
+                  <input
+                    type="date"
+                    value={quoteEditForm.issue_date || ''}
+                    onChange={(e) => setQuoteEditForm({ ...quoteEditForm, issue_date: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Validité jusqu'au</label>
+                  <input
+                    type="date"
+                    value={quoteEditForm.valid_until || ''}
+                    onChange={(e) => setQuoteEditForm({ ...quoteEditForm, valid_until: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant HT (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={quoteEditForm.amount_ht || 0}
+                    onChange={(e) => {
+                      const ht = Number(e.target.value);
+                      const vat = Number(quoteEditForm.vat_rate || 20);
+                      const ttc = ht * (1 + vat / 100);
+                      setQuoteEditForm({ ...quoteEditForm, amount_ht: ht, amount_ttc: Math.round(ttc * 100) / 100 });
+                    }}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">TVA (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={quoteEditForm.vat_rate || 20}
+                    onChange={(e) => {
+                      const vat = Number(e.target.value);
+                      const ht = Number(quoteEditForm.amount_ht || 0);
+                      const ttc = ht * (1 + vat / 100);
+                      setQuoteEditForm({ ...quoteEditForm, vat_rate: vat, amount_ttc: Math.round(ttc * 100) / 100 });
+                    }}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant TTC (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={quoteEditForm.amount_ttc || 0}
+                    onChange={(e) => setQuoteEditForm({ ...quoteEditForm, amount_ttc: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Notes / Conditions</label>
+                <textarea
+                  rows={2}
+                  value={quoteEditForm.notes || ''}
+                  onChange={(e) => setQuoteEditForm({ ...quoteEditForm, notes: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingQuote(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
+                >
+                  Mettre à jour le devis
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Quote */}
+      {quoteToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer le devis</h3>
+                <p className="text-slate-500 text-[11px] font-mono">{quoteToDelete.quote_number}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Confirmez-vous la suppression du devis {quoteToDelete.quote_number} d'un montant de {formatEuro(quoteToDelete.amount_ttc)} ?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setQuoteToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteQuote}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer le devis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Invoice */}
+      {editingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Modifier la facture {editingInvoice.invoice_number}</h3>
+              <button onClick={() => setEditingInvoice(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveInvoiceEdit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Réf. Facture</label>
+                  <input
+                    type="text"
+                    required
+                    value={invoiceEditForm.invoice_number || ''}
+                    onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, invoice_number: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Statut paiement</label>
+                  <select
+                    value={invoiceEditForm.payment_status || 'émise'}
+                    onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, payment_status: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
+                  >
+                    <option value="émise">Émise</option>
+                    <option value="partiellement payée">Partiellement payée</option>
+                    <option value="payé">Payée</option>
+                    <option value="en retard">En retard</option>
+                    <option value="annulée">Annulée</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date d'émission</label>
+                  <input
+                    type="date"
+                    value={invoiceEditForm.issue_date || ''}
+                    onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, issue_date: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date d'échéance</label>
+                  <input
+                    type="date"
+                    value={invoiceEditForm.due_date || ''}
+                    onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, due_date: e.target.value })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant HT (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceEditForm.amount_ht || 0}
+                    onChange={(e) => {
+                      const ht = Number(e.target.value);
+                      const vat = Number(invoiceEditForm.vat_rate || 20);
+                      const ttc = ht * (1 + vat / 100);
+                      setInvoiceEditForm({ ...invoiceEditForm, amount_ht: ht, amount_ttc: Math.round(ttc * 100) / 100 });
+                    }}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">TVA (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={invoiceEditForm.vat_rate || 20}
+                    onChange={(e) => {
+                      const vat = Number(e.target.value);
+                      const ht = Number(invoiceEditForm.amount_ht || 0);
+                      const ttc = ht * (1 + vat / 100);
+                      setInvoiceEditForm({ ...invoiceEditForm, vat_rate: vat, amount_ttc: Math.round(ttc * 100) / 100 });
+                    }}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Montant TTC (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceEditForm.amount_ttc || 0}
+                    onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, amount_ttc: Number(e.target.value) })}
+                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Notes</label>
+                <textarea
+                  rows={2}
+                  value={invoiceEditForm.notes || ''}
+                  onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, notes: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingInvoice(null)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
+                >
+                  Mettre à jour la facture
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Invoice */}
+      {invoiceToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer la facture</h3>
+                <p className="text-slate-500 text-[11px] font-mono">{invoiceToDelete.invoice_number}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Confirmez-vous la suppression de la facture {invoiceToDelete.invoice_number} ? Ses règlements associés seront également supprimés.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setInvoiceToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteInvoice}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer la facture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Payment */}
+      {paymentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer le règlement</h3>
+                <p className="text-slate-500 text-[11px]">Facture {paymentToDelete.invoice_number}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Confirmez-vous la suppression du règlement de {formatEuro(paymentToDelete.amount)} reçu le {formatDateFr(paymentToDelete.payment_date)} ?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPaymentToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeletePayment}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer le règlement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Task */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Supprimer la tâche</h3>
+                <p className="text-slate-500 text-[11px] truncate max-w-xs">{taskToDelete.title}</p>
+              </div>
+            </div>
+            <p className="text-slate-600">
+              Êtes-vous sûr de vouloir supprimer cette tâche ?
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setTaskToDelete(null)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteTask}
+                className="px-4 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 cursor-pointer"
+              >
+                Supprimer la tâche
               </button>
             </div>
           </div>
@@ -1815,7 +2539,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Modifier l'activité</h3>
-              <button onClick={() => setEditingActivity(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setEditingActivity(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleSaveActivityEdit} className="space-y-3">
@@ -1867,13 +2591,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingActivity(null)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Mettre à jour
                 </button>
@@ -1889,7 +2613,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Modifier la mission</h3>
-              <button onClick={() => setEditingMission(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setEditingMission(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleSaveMissionEdit} className="space-y-3">
@@ -1961,13 +2685,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingMission(null)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Mettre à jour
                 </button>
@@ -1983,7 +2707,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Modifier le contrat</h3>
-              <button onClick={() => setEditingContract(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setEditingContract(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleSaveContractEdit} className="space-y-3">
@@ -2030,13 +2754,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingContract(null)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Mettre à jour
                 </button>
@@ -2052,7 +2776,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Modifier la tâche</h3>
-              <button onClick={() => setEditingTask(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setEditingTask(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleSaveTaskEdit} className="space-y-3">
@@ -2110,13 +2834,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingTask(null)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Mettre à jour
                 </button>
@@ -2132,7 +2856,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Nouvelle mission pour {contact.contact_name}</h3>
-              <button onClick={() => setIsNewMissionOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setIsNewMissionOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleCreateMission} className="space-y-3">
@@ -2216,13 +2940,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewMissionOpen(false)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Créer la mission
                 </button>
@@ -2238,7 +2962,7 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Nouvelle tâche pour ce client</h3>
-              <button onClick={() => setIsNewTaskOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button onClick={() => setIsNewTaskOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleCreateTask} className="space-y-3">
@@ -2283,13 +3007,13 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewTaskOpen(false)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer"
                 >
                   Créer la tâche
                 </button>

@@ -10,7 +10,8 @@ import {
   ArrowRight,
   Calendar,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { api, formatEuro, formatDateFr, formatDuration } from '../services/api.ts';
 import { DashboardData } from '../types/crm.ts';
@@ -63,7 +64,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   if (error || !data) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error || 'Erreur inconnue'}
         </div>
@@ -72,11 +73,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       {/* Top Welcome & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
             Pilotage de l'activité Matt Konnect
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -84,30 +85,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onNavigate('contacts')}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
           >
             Nouveau contact
           </button>
           <button
             onClick={() => onNavigate('missions')}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer"
           >
             Nouvelle mission
           </button>
           <button
             onClick={() => onOpenQuickLog()}
-            className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs"
+            className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-xs cursor-pointer"
           >
             Consigner mon travail
           </button>
         </div>
       </div>
 
+      {/* Clean Database Welcome Callout */}
+      {data.active_clients === 0 && data.active_missions === 0 && (
+        <div className="bg-gradient-to-r from-indigo-50/90 to-blue-50/90 border border-indigo-100 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-xs sm:text-sm font-bold text-indigo-950 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+              Base de données prête & épurée
+            </h2>
+            <p className="text-[11px] sm:text-xs text-indigo-800 leading-relaxed max-w-xl">
+              Votre espace CRM est complètement vierge de données d'exemple. Créez votre premier contact ou consigner directement vos interventions et devis.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => onNavigate('contacts')}
+              className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-xs cursor-pointer"
+            >
+              + Ajouter un contact
+            </button>
+            <button
+              onClick={() => onOpenQuickLog()}
+              className="px-3 py-1.5 text-xs font-medium bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-50 cursor-pointer"
+            >
+              Consigner une action
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Row 1: Pipeline & Portfolio Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div
           onClick={() => onNavigate('contacts')}
           className="p-4 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors cursor-pointer"

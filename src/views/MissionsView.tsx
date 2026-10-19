@@ -226,11 +226,11 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
             Missions & Projets
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -240,7 +240,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Nouvelle mission</span>
@@ -266,7 +266,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
           </div>
           <button
             onClick={() => setNotification(null)}
-            className="text-slate-400 hover:text-slate-700 text-xs ml-4"
+            className="text-slate-400 hover:text-slate-700 text-xs ml-4 cursor-pointer"
           >
             ✕
           </button>
@@ -274,7 +274,8 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
       )}
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit overflow-x-auto">
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit overflow-x-auto scrollbar-none">
         {['tous', 'en cours', 'devis envoyé', 'planifiée', 'livrée', 'clôturée'].map((st) => (
           <button
             key={st}
@@ -288,6 +289,7 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
             {st}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Missions Grid */}

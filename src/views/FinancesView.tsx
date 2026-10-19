@@ -309,11 +309,11 @@ export const FinancesView: React.FC<FinancesViewProps> = ({ onSelectContact }) =
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
             Devis, Factures & Encaissements
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -413,31 +413,33 @@ export const FinancesView: React.FC<FinancesViewProps> = ({ onSelectContact }) =
       </div>
 
       {/* Sub tabs: Factures vs Devis vs Règlements */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveSubTab('invoices')}
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeSubTab === 'invoices' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Factures émises ({invoices.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('quotes')}
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeSubTab === 'quotes' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Devis ({quotes.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('payments')}
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-            activeSubTab === 'payments' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Historique règlements ({payments.length})
-        </button>
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => setActiveSubTab('invoices')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${
+              activeSubTab === 'invoices' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Factures émises ({invoices.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab('quotes')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${
+              activeSubTab === 'quotes' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Devis ({quotes.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab('payments')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer ${
+              activeSubTab === 'payments' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Historique règlements ({payments.length})
+          </button>
+        </div>
       </div>
 
       {/* Invoices List */}

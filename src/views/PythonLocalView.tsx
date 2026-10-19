@@ -34,10 +34,10 @@ pandas>=2.1.0
 `;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
           <Terminal className="w-5 h-5 text-indigo-600" />
           Code Python & Déploiement Local sous Windows
         </h1>

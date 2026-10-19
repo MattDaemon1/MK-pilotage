@@ -259,7 +259,7 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -385,167 +385,267 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
-                <tr>
-                  <th className="py-3 px-4">Contact / Entreprise</th>
-                  <th className="py-3 px-4">Statut</th>
-                  <th className="py-3 px-4">Coordonnées</th>
-                  <th className="py-3 px-4">Missions / Contrats</th>
-                  <th className="py-3 px-4">Prochaine action</th>
-                  <th className="py-3 px-4 text-right">Actions de gestion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {contacts.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => onSelectContact(c.id)}
-                    className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+        <>
+          {/* Mobile Cards View (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {contacts.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => onSelectContact(c.id)}
+                className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm">
+                      {c.contact_name}
+                    </div>
+                    {c.company_name && (
+                      <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{c.company_name}</span>
+                        {c.role_title && <span className="text-slate-400">· {c.role_title}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    {c.status === 'prospect' && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-medium">Prospect</span>
+                    )}
+                    {c.status === 'client' && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">Client</span>
+                    )}
+                    {c.status === 'client_inactif' && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">Inactif</span>
+                    )}
+                    {c.status === 'partenaire' && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-medium">Partenaire</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Details info */}
+                <div className="text-xs text-slate-600 space-y-1 pt-1 border-t border-slate-100">
+                  {c.email && <div className="truncate text-slate-700">{c.email}</div>}
+                  <div className="flex items-center gap-3 text-slate-500 text-[11px]">
+                    {c.phone && <span>{c.phone}</span>}
+                    {c.city && <span>· {c.city}</span>}
+                    <span>· {c.active_missions_count || 0} mission(s)</span>
+                  </div>
+                </div>
+
+                {c.next_action && (
+                  <div className="bg-slate-50 p-2.5 rounded-lg text-xs space-y-0.5 border border-slate-100">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Prochaine action</span>
+                    <div className="text-slate-800 font-medium truncate">{c.next_action}</div>
+                    {c.follow_up_date && (
+                      <div className="text-[10px] font-mono text-indigo-600">Échéance : {formatDateFr(c.follow_up_date)}</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Quick actions row */}
+                <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                  {c.status === 'prospect' && (
+                    <button
+                      onClick={(e) => handleOpenConvert(e, c)}
+                      className="px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg cursor-pointer"
+                    >
+                      Convertir
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onOpenQuickLogForContact(c.id)}
+                    className="px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg cursor-pointer"
                   >
-                    {/* Name & Company */}
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">
-                        {c.contact_name}
-                      </div>
-                      {c.company_name && (
-                        <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Building2 className="w-3 h-3 text-slate-400" />
-                          <span>{c.company_name}</span>
-                          {c.role_title && <span className="text-slate-400">· {c.role_title}</span>}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Status with clean unboxed text */}
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {c.status === 'prospect' && (
-                        <span className="text-amber-700 font-medium">Prospect</span>
-                      )}
-                      {c.status === 'client' && (
-                        <span className="text-emerald-700 font-medium">Client</span>
-                      )}
-                      {c.status === 'client_inactif' && (
-                        <span className="text-slate-500 font-medium">Inactif</span>
-                      )}
-                      {c.status === 'partenaire' && (
-                        <span className="text-indigo-700 font-medium">Partenaire</span>
-                      )}
-                      {c.is_archived === 1 && (
-                        <span className="ml-1 text-[10px] text-slate-400 font-normal">[Archivé]</span>
-                      )}
-                    </td>
-
-                    {/* Contact Details */}
-                    <td className="py-3 px-4">
-                      {c.email && (
-                        <div className="text-slate-600 truncate max-w-[180px]">
-                          {c.email}
-                        </div>
-                      )}
-                      <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                        {c.phone && <span>{c.phone}</span>}
-                        {c.city && <span>· {c.city}</span>}
-                      </div>
-                    </td>
-
-                    {/* Missions / Contrats metrics */}
-                    <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-700">
-                      <div>
-                        {c.active_missions_count || 0} mission(s)
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {c.active_contracts_count || 0} contrat(s) actif(s)
-                      </div>
-                    </td>
-
-                    {/* Next Action */}
-                    <td className="py-3 px-4 max-w-xs">
-                      {c.next_action ? (
-                        <div>
-                          <div className="text-slate-900 font-medium truncate">
-                            {c.next_action}
-                          </div>
-                          {c.follow_up_date && (
-                            <div className="text-[10px] font-mono tabular-nums text-indigo-600 mt-0.5">
-                              Échéance : {formatDateFr(c.follow_up_date)}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">—</span>
-                      )}
-                    </td>
-
-                    {/* Comprehensive Actions: Modifier, Supprimer, Archiver, Convertir, Fiche */}
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        {c.status === 'prospect' && (
-                          <button
-                            onClick={(e) => handleOpenConvert(e, c)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-md transition-colors"
-                            title="Convertir en Client sans perte d'historique"
-                          >
-                            <Sparkles className="w-3 h-3 text-emerald-600" />
-                            <span>Convertir</span>
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => onOpenQuickLogForContact(c.id)}
-                          className="px-2 py-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors"
-                          title="Consigner une action pour ce contact"
-                        >
-                          + Action
-                        </button>
-
-                        {/* Modifier */}
-                        <button
-                          onClick={(e) => handleOpenEdit(e, c)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition-colors shadow-2xs"
-                          title="Modifier toutes les informations de ce contact"
-                        >
-                          <Pencil className="w-3 h-3 text-slate-600" />
-                          <span>Modifier</span>
-                        </button>
-
-                        {/* Supprimer */}
-                        <button
-                          onClick={(e) => handleOpenDelete(e, c)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-md transition-colors shadow-2xs"
-                          title="Supprimer ce contact"
-                        >
-                          <Trash2 className="w-3 h-3 text-red-600" />
-                          <span>Supprimer</span>
-                        </button>
-
-                        {/* Archiver / Désarchiver */}
-                        <button
-                          onClick={(e) => handleToggleArchive(e, c)}
-                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
-                          title={c.is_archived ? "Désarchiver le contact" : "Archiver le contact"}
-                        >
-                          {c.is_archived ? <ArchiveRestore className="w-3.5 h-3.5 text-amber-600" /> : <Archive className="w-3.5 h-3.5" />}
-                        </button>
-
-                        <button
-                          onClick={() => onSelectContact(c.id)}
-                          className="inline-flex items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
-                          title="Ouvrir la fiche complète"
-                        >
-                          <span>Fiche</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    + Action
+                  </button>
+                  <button
+                    onClick={(e) => handleOpenEdit(e, c)}
+                    className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg cursor-pointer"
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    onClick={(e) => handleOpenDelete(e, c)}
+                    className="px-2.5 py-1 text-xs font-medium text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer"
+                  >
+                    Supprimer
+                  </button>
+                  <button
+                    onClick={() => onSelectContact(c.id)}
+                    className="px-2.5 py-1 text-xs font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 cursor-pointer flex items-center gap-0.5"
+                  >
+                    <span>Fiche</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+
+          {/* Desktop Table View (hidden md:block) */}
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">Contact / Entreprise</th>
+                    <th className="py-3 px-4">Statut</th>
+                    <th className="py-3 px-4">Coordonnées</th>
+                    <th className="py-3 px-4">Missions / Contrats</th>
+                    <th className="py-3 px-4">Prochaine action</th>
+                    <th className="py-3 px-4 text-right">Actions de gestion</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {contacts.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => onSelectContact(c.id)}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                    >
+                      {/* Name & Company */}
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-900">
+                          {c.contact_name}
+                        </div>
+                        {c.company_name && (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Building2 className="w-3 h-3 text-slate-400" />
+                            <span>{c.company_name}</span>
+                            {c.role_title && <span className="text-slate-400">· {c.role_title}</span>}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Status with clean unboxed text */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {c.status === 'prospect' && (
+                          <span className="text-amber-700 font-medium">Prospect</span>
+                        )}
+                        {c.status === 'client' && (
+                          <span className="text-emerald-700 font-medium">Client</span>
+                        )}
+                        {c.status === 'client_inactif' && (
+                          <span className="text-slate-500 font-medium">Inactif</span>
+                        )}
+                        {c.status === 'partenaire' && (
+                          <span className="text-indigo-700 font-medium">Partenaire</span>
+                        )}
+                        {c.is_archived === 1 && (
+                          <span className="ml-1 text-[10px] text-slate-400 font-normal">[Archivé]</span>
+                        )}
+                      </td>
+
+                      {/* Contact Details */}
+                      <td className="py-3 px-4">
+                        {c.email && (
+                          <div className="text-slate-600 truncate max-w-[180px]">
+                            {c.email}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          {c.phone && <span>{c.phone}</span>}
+                          {c.city && <span>· {c.city}</span>}
+                        </div>
+                      </td>
+
+                      {/* Missions / Contrats metrics */}
+                      <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-700">
+                        <div>
+                          {c.active_missions_count || 0} mission(s)
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {c.active_contracts_count || 0} contrat(s) actif(s)
+                        </div>
+                      </td>
+
+                      {/* Next Action */}
+                      <td className="py-3 px-4 max-w-xs">
+                        {c.next_action ? (
+                          <div>
+                            <div className="text-slate-900 font-medium truncate">
+                              {c.next_action}
+                            </div>
+                            {c.follow_up_date && (
+                              <div className="text-[10px] font-mono tabular-nums text-indigo-600 mt-0.5">
+                                Échéance : {formatDateFr(c.follow_up_date)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">—</span>
+                        )}
+                      </td>
+
+                      {/* Comprehensive Actions: Modifier, Supprimer, Archiver, Convertir, Fiche */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {c.status === 'prospect' && (
+                            <button
+                              onClick={(e) => handleOpenConvert(e, c)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-md transition-colors cursor-pointer"
+                              title="Convertir en Client sans perte d'historique"
+                            >
+                              <Sparkles className="w-3 h-3 text-emerald-600" />
+                              <span>Convertir</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => onOpenQuickLogForContact(c.id)}
+                            className="px-2 py-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors cursor-pointer"
+                            title="Consigner une action pour ce contact"
+                          >
+                            + Action
+                          </button>
+
+                          {/* Modifier */}
+                          <button
+                            onClick={(e) => handleOpenEdit(e, c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition-colors shadow-2xs cursor-pointer"
+                            title="Modifier toutes les informations de ce contact"
+                          >
+                            <Pencil className="w-3 h-3 text-slate-600" />
+                            <span>Modifier</span>
+                          </button>
+
+                          {/* Supprimer */}
+                          <button
+                            onClick={(e) => handleOpenDelete(e, c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-md transition-colors shadow-2xs cursor-pointer"
+                            title="Supprimer ce contact"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600" />
+                            <span>Supprimer</span>
+                          </button>
+
+                          {/* Archiver / Désarchiver */}
+                          <button
+                            onClick={(e) => handleToggleArchive(e, c)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors cursor-pointer"
+                            title={c.is_archived ? "Désarchiver le contact" : "Archiver le contact"}
+                          >
+                            {c.is_archived ? <ArchiveRestore className="w-3.5 h-3.5 text-amber-600" /> : <Archive className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <button
+                            onClick={() => onSelectContact(c.id)}
+                            className="inline-flex items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                            title="Ouvrir la fiche complète"
+                          >
+                            <span>Fiche</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {/* New Contact Modal */}

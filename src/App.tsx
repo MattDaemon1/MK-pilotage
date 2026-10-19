@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar, ActiveTab } from './components/Sidebar.tsx';
 import { TopBar } from './components/TopBar.tsx';
+import { MobileBottomNav } from './components/MobileBottomNav.tsx';
 import { QuickLogModal } from './components/QuickLogModal.tsx';
 import { DashboardView } from './views/DashboardView.tsx';
 import { ContactsView } from './views/ContactsView.tsx';
@@ -18,6 +19,7 @@ import { api } from './services/api.ts';
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Quick log modal
   const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
@@ -104,11 +106,13 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation (Desktop sidebar + Mobile drawer) */}
       <Sidebar
         activeTab={activeTab}
         onTabChange={handleTabChange}
         counts={badgeCounts}
+        isMobileOpen={isMobileDrawerOpen}
+        onCloseMobile={() => setIsMobileDrawerOpen(false)}
       />
 
       {/* Main Workspace */}
@@ -122,10 +126,11 @@ export default function App() {
             setSelectedContactId(null);
           }}
           clientDetailName={selectedContactId ? currentContactName : null}
+          onToggleMobileMenu={() => setIsMobileDrawerOpen((v) => !v)}
         />
 
-        {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Viewport Content with padding-bottom for mobile bottom navigation */}
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
           {activeTab === 'dashboard' && (
             <DashboardView
               key={refreshKey}
@@ -208,6 +213,14 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (hidden on desktop) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onOpenDrawer={() => setIsMobileDrawerOpen(true)}
+        badgeCounts={badgeCounts}
+      />
 
       {/* Lightning-Fast Work Logger Modal */}
       <QuickLogModal

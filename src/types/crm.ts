@@ -16,7 +16,9 @@ export type MissionStatus =
 
 export type ActivityCategory =
   | 'Appel'
+  | 'Appel téléphonique'
   | 'Email'
+  | 'E-mail'
   | 'Rendez-vous'
   | 'Prospection'
   | 'Audit de site'
@@ -24,6 +26,7 @@ export type ActivityCategory =
   | 'Développement'
   | 'Maintenance'
   | 'Correction bug'
+  | 'Correction de bug'
   | 'Mise à jour WordPress'
   | 'Formation'
   | 'Conseil'
@@ -32,7 +35,8 @@ export type ActivityCategory =
   | 'Compte rendu'
   | 'Relance'
   | 'Administration'
-  | 'Autre';
+  | 'Autre'
+  | 'Autre action';
 
 export type ActivityStatus = 'réalisé' | 'prévu' | 'annulé';
 
@@ -60,6 +64,7 @@ export interface Contact {
   postal_code: string | null;
   city: string | null;
   industry: string | null;
+  sector?: string | null;
   lead_source: LeadSource;
   status: ContactStatus;
   next_action: string | null;
@@ -108,6 +113,7 @@ export interface Mission {
   start_date: string | null;
   expected_delivery_date: string | null;
   closed_date: string | null;
+  actual_close_date?: string | null;
   status: MissionStatus;
   estimated_amount: number;
   accepted_amount: number;
@@ -120,8 +126,11 @@ export interface Mission {
   contact_name?: string;
   contact_email?: string | null;
   actual_hours_spent?: number;
+  actual_minutes_spent?: number;
   billed_amount?: number;
+  invoiced_amount?: number;
   paid_amount?: number;
+  collected_amount?: number;
   pending_tasks_count?: number;
 }
 
@@ -155,12 +164,15 @@ export interface Quote {
   mission_id: number | null;
   issue_date: string;
   validity_date: string | null;
+  valid_until?: string | null;
   amount_ht: number;
   tax_rate: number;
+  vat_rate?: number;
   amount_ttc: number;
   status: QuoteStatus;
   document_url: string | null;
   notes: string | null;
+  terms?: string | null;
   created_at: string;
   company_name?: string | null;
   contact_name?: string;
@@ -177,6 +189,7 @@ export interface Invoice {
   due_date: string;
   amount_ht: number;
   tax_rate: number;
+  vat_rate?: number;
   amount_ttc: number;
   payment_status: InvoicePaymentStatus;
   document_url: string | null;
