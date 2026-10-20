@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -18,7 +19,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json({ limit: '20mb' }));
 
@@ -1738,10 +1739,11 @@ app.post('/api/backup/reset-demo', (req, res) => {
 // -------------------------------------------------------------
 // Frontend Integration (Vite in dev, static in prod)
 // -------------------------------------------------------------
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.resolve(__dirname, 'dist')));
+const distDir = path.resolve(__dirname, 'dist');
+if (process.env.NODE_ENV === 'production' || fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
   app.get('*', (_req, res) => {
-    res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    res.sendFile(path.resolve(distDir, 'index.html'));
   });
 } else {
   const { createServer: createViteServer } = await import('vite');
@@ -1752,6 +1754,6 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
-app.listen(PORT, () => {
-  console.log(`Matt Konnect CRM server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Matt Konnect CRM server running on port ${PORT} (0.0.0.0)`);
 });
