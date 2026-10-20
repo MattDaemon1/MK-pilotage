@@ -64,9 +64,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   if (error || !data) {
     return (
-      <div className="p-4 sm:p-8">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error || 'Erreur inconnue'}
+      <div className="p-4 sm:p-8 max-w-lg mx-auto my-12">
+        <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm text-center space-y-4">
+          <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-slate-900">Initialisation de l'application</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {error || 'Impossible de joindre le serveur API.'}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+            <button
+              onClick={loadDashboard}
+              className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors cursor-pointer"
+            >
+              Réessayer
+            </button>
+            <button
+              onClick={() => {
+                api.setForceLocalMode(true);
+                loadDashboard();
+              }}
+              className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            >
+              Ouvrir en mode local autonome
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -20,15 +20,15 @@ export const SettingsBackupView: React.FC = () => {
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
 
   const handleDownloadSqlite = () => {
-    window.location.href = '/api/backup/sqlite';
+    api.downloadSqlite();
   };
 
   const handleDownloadJson = () => {
-    window.location.href = '/api/backup/json';
+    api.downloadJsonBackup();
   };
 
   const handleDownloadCsv = (table: string) => {
-    window.location.href = `/api/backup/csv/${table}`;
+    api.downloadCsv(table);
   };
 
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {

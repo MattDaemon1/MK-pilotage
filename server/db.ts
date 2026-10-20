@@ -5,7 +5,8 @@ import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
 let SQL: SqlJsStatic;
 let db: Database;
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isServerless ? '/tmp/matt_konnect_data' : path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'matt_konnect.sqlite');
 
 export async function getDatabase(): Promise<Database> {
@@ -15,19 +16,23 @@ export async function getDatabase(): Promise<Database> {
     SQL = await initSqlJs();
   }
 
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('Could not create data directory, SQLite will remain in-memory:', err);
   }
 
-  if (fs.existsSync(DB_FILE)) {
-    try {
+  try {
+    if (fs.existsSync(DB_FILE)) {
       const fileBuffer = fs.readFileSync(DB_FILE);
       db = new SQL.Database(fileBuffer);
       initSchema(db);
       return db;
-    } catch (e) {
-      console.error('Error loading existing SQLite database, creating new one:', e);
     }
+  } catch (e) {
+    console.warn('Could not read existing SQLite database file:', e);
   }
 
   db = new SQL.Database();
