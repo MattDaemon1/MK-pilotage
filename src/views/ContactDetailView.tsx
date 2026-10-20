@@ -2324,15 +2324,15 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Statut paiement</label>
                   <select
-                    value={invoiceEditForm.payment_status || 'émise'}
+                    value={invoiceEditForm.payment_status || 'à payer'}
                     onChange={(e) => setInvoiceEditForm({ ...invoiceEditForm, payment_status: e.target.value })}
                     className="w-full px-3 py-1.5 border border-slate-300 rounded bg-white"
                   >
-                    <option value="émise">Émise</option>
-                    <option value="partiellement payée">Partiellement payée</option>
+                    <option value="à payer">À payer (émise)</option>
+                    <option value="partiellement payé">Partiellement payée</option>
                     <option value="payé">Payée</option>
                     <option value="en retard">En retard</option>
-                    <option value="annulée">Annulée</option>
+                    <option value="non facturé">Annulée / Non facturée</option>
                   </select>
                 </div>
               </div>

@@ -676,8 +676,6 @@ app.put('/api/missions/:id', (req, res) => {
     const closed_date = b.closed_date !== undefined ? (b.closed_date || null) : (status === 'clôturée' ? (existing.closed_date || new Date().toISOString().split('T')[0]) : existing.closed_date);
     const estimated_amount = b.estimated_amount !== undefined ? Number(b.estimated_amount) : existing.estimated_amount;
     const accepted_amount = b.accepted_amount !== undefined ? Number(b.accepted_amount) : existing.accepted_amount;
-    const invoiced_amount = b.invoiced_amount !== undefined ? Number(b.invoiced_amount) : existing.invoiced_amount;
-    const collected_amount = b.collected_amount !== undefined ? Number(b.collected_amount) : existing.collected_amount;
     const time_budget_hours = b.time_budget_hours !== undefined ? Number(b.time_budget_hours) : existing.time_budget_hours;
     const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
     const is_archived = b.is_archived !== undefined ? (b.is_archived ? 1 : 0) : existing.is_archived;
@@ -695,8 +693,6 @@ app.put('/api/missions/:id', (req, res) => {
         status = ?,
         estimated_amount = ?,
         accepted_amount = ?,
-        invoiced_amount = ?,
-        collected_amount = ?,
         time_budget_hours = ?,
         notes = ?,
         is_archived = ?,
@@ -714,8 +710,6 @@ app.put('/api/missions/:id', (req, res) => {
       status,
       estimated_amount,
       accepted_amount,
-      invoiced_amount,
-      collected_amount,
       time_budget_hours,
       notes,
       is_archived,
@@ -1178,8 +1172,10 @@ app.put('/api/invoices/:id', (req, res) => {
     const due_date = b.due_date !== undefined ? b.due_date : existing.due_date;
     const numHT = b.amount_ht !== undefined ? Number(b.amount_ht) : existing.amount_ht;
     const numTax = b.tax_rate !== undefined ? Number(b.tax_rate) : existing.tax_rate;
-    const numTTC = Math.round((numHT * (1 + numTax / 100)) * 100) / 100;
-    const payment_status = b.payment_status !== undefined ? b.payment_status : existing.payment_status;
+    let payment_status = b.payment_status !== undefined ? b.payment_status : existing.payment_status;
+    if (payment_status === 'émise') payment_status = 'à payer';
+    if (payment_status === 'partiellement payée' || payment_status === 'partiel') payment_status = 'partiellement payé';
+    if (payment_status === 'annulée') payment_status = 'non facturé';
     const document_url = b.document_url !== undefined ? (b.document_url || null) : existing.document_url;
     const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
 
