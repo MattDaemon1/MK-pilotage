@@ -14,9 +14,14 @@ import { TasksView } from './views/TasksView.tsx';
 import { GlobalSearchView } from './views/GlobalSearchView.tsx';
 import { SettingsBackupView } from './views/SettingsBackupView.tsx';
 import { PythonLocalView } from './views/PythonLocalView.tsx';
+import { LoginView } from './views/LoginView.tsx';
 import { api } from './services/api.ts';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    return localStorage.getItem('mk_auth_user');
+  });
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -104,6 +109,15 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('mk_auth_user');
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return <LoginView onLoginSuccess={(u) => setCurrentUser(u)} />;
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
       {/* Sidebar Navigation (Desktop sidebar + Mobile drawer) */}
@@ -113,6 +127,8 @@ export default function App() {
         counts={badgeCounts}
         isMobileOpen={isMobileDrawerOpen}
         onCloseMobile={() => setIsMobileDrawerOpen(false)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Workspace */}
@@ -127,6 +143,8 @@ export default function App() {
           }}
           clientDetailName={selectedContactId ? currentContactName : null}
           onToggleMobileMenu={() => setIsMobileDrawerOpen((v) => !v)}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
 
         {/* Viewport Content with padding-bottom for mobile bottom navigation */}

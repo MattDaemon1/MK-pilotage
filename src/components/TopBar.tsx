@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircle, Search, Menu } from 'lucide-react';
+import { PlusCircle, Search, Menu, LogOut } from 'lucide-react';
 import { ActiveTab } from './Sidebar.tsx';
 
 interface TopBarProps {
@@ -8,6 +8,8 @@ interface TopBarProps {
   onOpenSearch: () => void;
   clientDetailName?: string | null;
   onToggleMobileMenu?: () => void;
+  currentUser?: string | null;
+  onLogout?: () => void;
 }
 
 const TAB_TITLES: Record<ActiveTab, string> = {
@@ -28,7 +30,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenQuickLog,
   onOpenSearch,
   clientDetailName,
-  onToggleMobileMenu
+  onToggleMobileMenu,
+  currentUser,
+  onLogout
 }) => {
   return (
     <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-3 sm:px-6 shrink-0 gap-2 sm:gap-4 z-10">
@@ -74,7 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: Mobile search icon + Primary action button */}
+      {/* Zone 3: Mobile search icon + Primary action button + User profile & logout */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <button
           onClick={onOpenSearch}
@@ -93,6 +97,19 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span className="hidden sm:inline">Consigner mon travail</span>
           <span className="sm:hidden">Consigner</span>
         </button>
+
+        {onLogout && (
+          <div className="flex items-center pl-1 sm:pl-2 border-l border-slate-200">
+            <button
+              onClick={onLogout}
+              className="inline-flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="Déconnexion (session Matt)"
+            >
+              <LogOut className="w-3.5 h-3.5 text-slate-400 hover:text-red-600" />
+              <span className="hidden lg:inline text-[11px] font-medium">Déconnexion</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

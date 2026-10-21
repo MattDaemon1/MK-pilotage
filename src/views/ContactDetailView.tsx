@@ -319,7 +319,24 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     e.preventDefault();
     if (!editingMission) return;
     try {
-      await api.updateMission(editingMission.id, editingMission);
+      const {
+        invoiced_amount,
+        collected_amount,
+        billed_amount,
+        paid_amount,
+        actual_hours_spent,
+        actual_minutes_spent,
+        company_name,
+        contact_name,
+        contact_email,
+        pending_tasks_count,
+        ...payload
+      } = editingMission as any;
+
+      await api.updateMission(editingMission.id, {
+        ...payload,
+        closed_date: payload.status === 'clôturée' ? (payload.closed_date || payload.actual_close_date || new Date().toISOString().split('T')[0]) : null
+      });
       setEditingMission(null);
       setNotification({
         type: 'success',
@@ -357,7 +374,8 @@ export const ContactDetailView: React.FC<ContactDetailViewProps> = ({
     e.preventDefault();
     if (!editingContract) return;
     try {
-      await api.updateContract(editingContract.id, editingContract);
+      const { company_name, contact_name, ...payload } = editingContract as any;
+      await api.updateContract(editingContract.id, payload);
       setEditingContract(null);
       setNotification({
         type: 'success',

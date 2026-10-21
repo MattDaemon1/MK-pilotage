@@ -100,6 +100,24 @@ export const api = {
     return isServerOnline === false;
   },
 
+  // Auth
+  async login(username: string, password: string): Promise<{ success: boolean; user: { username: string; role: string } }> {
+    return tryServerOrFallback(
+      () =>
+        fetch(`${BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        }),
+      async () => {
+        if (username.trim().toLowerCase() === 'matt' && password === 'Maboule35!') {
+          return { success: true, user: { username: 'Matt', role: 'admin' } };
+        }
+        throw new Error('Identifiant ou mot de passe incorrect.');
+      }
+    );
+  },
+
   // Dashboard
   async getDashboard(): Promise<DashboardData> {
     return tryServerOrFallback(

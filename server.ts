@@ -27,6 +27,24 @@ app.use(express.json({ limit: '20mb' }));
 await getDatabase();
 
 // -------------------------------------------------------------
+// Authentication Endpoints
+// -------------------------------------------------------------
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Identifiant et mot de passe requis.' });
+    }
+    if (username.trim().toLowerCase() === 'matt' && password === 'Maboule35!') {
+      return res.json({ success: true, user: { username: 'Matt', role: 'admin' } });
+    }
+    return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
 // Contacts Endpoints
 // -------------------------------------------------------------
 app.get('/api/contacts', (req, res) => {
@@ -142,7 +160,9 @@ app.get('/api/contacts/:id', (req, res) => {
       SELECT m.*,
         (SELECT COALESCE(SUM(a.duration_minutes), 0) / 60.0 FROM activities a WHERE a.mission_id = m.id) as actual_hours_spent,
         (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as billed_amount,
-        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as paid_amount
+        (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as invoiced_amount,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as paid_amount,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as collected_amount
       FROM missions m
       WHERE m.contact_id = ?
       ORDER BY m.created_at DESC
@@ -570,7 +590,9 @@ app.get('/api/missions', (req, res) => {
         c.company_name, c.contact_name, c.email as contact_email,
         (SELECT COALESCE(SUM(a.duration_minutes), 0) / 60.0 FROM activities a WHERE a.mission_id = m.id) as actual_hours_spent,
         (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as billed_amount,
+        (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as invoiced_amount,
         (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as paid_amount,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as collected_amount,
         (SELECT COUNT(*) FROM tasks t WHERE t.mission_id = m.id AND t.status != 'terminée') as pending_tasks_count
       FROM missions m
       JOIN contacts c ON c.id = m.contact_id
@@ -673,7 +695,8 @@ app.put('/api/missions/:id', (req, res) => {
     const start_date = b.start_date !== undefined ? (b.start_date || null) : existing.start_date;
     const expected_delivery_date = b.expected_delivery_date !== undefined ? (b.expected_delivery_date || null) : existing.expected_delivery_date;
     const status = b.status !== undefined ? b.status : existing.status;
-    const closed_date = b.closed_date !== undefined ? (b.closed_date || null) : (status === 'clôturée' ? (existing.closed_date || new Date().toISOString().split('T')[0]) : existing.closed_date);
+    const rawClosedDate = b.closed_date !== undefined ? b.closed_date : b.actual_close_date;
+    const closed_date = rawClosedDate !== undefined ? (rawClosedDate || null) : (status === 'clôturée' ? (existing.closed_date || new Date().toISOString().split('T')[0]) : (existing.status === 'clôturée' && status !== 'clôturée' ? null : existing.closed_date));
     const estimated_amount = b.estimated_amount !== undefined ? Number(b.estimated_amount) : existing.estimated_amount;
     const accepted_amount = b.accepted_amount !== undefined ? Number(b.accepted_amount) : existing.accepted_amount;
     const time_budget_hours = b.time_budget_hours !== undefined ? Number(b.time_budget_hours) : existing.time_budget_hours;
@@ -716,8 +739,20 @@ app.put('/api/missions/:id', (req, res) => {
       missionId
     ]);
 
-    const updated = queryOne(`SELECT * FROM missions WHERE id = ?`, [missionId]);
-    res.json(updated);
+    const updated = queryOne(`
+      SELECT m.*,
+        c.company_name, c.contact_name, c.email as contact_email,
+        (SELECT COALESCE(SUM(a.duration_minutes), 0) / 60.0 FROM activities a WHERE a.mission_id = m.id) as actual_hours_spent,
+        (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as billed_amount,
+        (SELECT COALESCE(SUM(i.amount_ttc), 0) FROM invoices i WHERE i.mission_id = m.id) as invoiced_amount,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as paid_amount,
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE i.mission_id = m.id) as collected_amount,
+        (SELECT COUNT(*) FROM tasks t WHERE t.mission_id = m.id AND t.status != 'terminée') as pending_tasks_count
+      FROM missions m
+      JOIN contacts c ON c.id = m.contact_id
+      WHERE m.id = ?
+    `, [missionId]);
+    res.json(updated || queryOne(`SELECT * FROM missions WHERE id = ?`, [missionId]));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -796,8 +831,9 @@ app.post('/api/contracts', (req, res) => {
       notes
     } = req.body;
 
-    if (!contact_id || !title || !start_date || amount_per_period === undefined) {
-      return res.status(400).json({ error: 'Client, intitulé, date de début et montant sont requis.' });
+    const contractStartDate = start_date || new Date().toISOString().split('T')[0];
+    if (!contact_id || !title || amount_per_period === undefined) {
+      return res.status(400).json({ error: 'Client, intitulé et montant sont requis.' });
     }
 
     const year = new Date().getFullYear();
@@ -816,7 +852,7 @@ app.post('/api/contracts', (req, res) => {
       Number(contact_id),
       title,
       description || null,
-      start_date,
+      contractStartDate,
       end_date || null,
       frequency,
       Number(amount_per_period),
@@ -1112,6 +1148,13 @@ app.post('/api/invoices', (req, res) => {
       return res.status(400).json({ error: 'Client et montant HT sont obligatoires.' });
     }
 
+    let normPaymentStatus = payment_status;
+    if (normPaymentStatus === 'émise' || normPaymentStatus === 'emise') normPaymentStatus = 'à payer';
+    if (normPaymentStatus === 'partiellement payée' || normPaymentStatus === 'partiel' || normPaymentStatus === 'partiellement payee') normPaymentStatus = 'partiellement payé';
+    if (normPaymentStatus === 'payée' || normPaymentStatus === 'payee' || normPaymentStatus === 'payé') normPaymentStatus = 'payé';
+    if (normPaymentStatus === 'annulée' || normPaymentStatus === 'annulee') normPaymentStatus = 'non facturé';
+    if (normPaymentStatus === 'retard') normPaymentStatus = 'en retard';
+
     const year = new Date().getFullYear();
     const countRes = queryOne(`SELECT COUNT(*) as count FROM invoices WHERE invoice_number LIKE ?`, [`FAC-${year}-%`]);
     const nextSeq = String((countRes?.count || 0) + 1).padStart(3, '0');
@@ -1145,7 +1188,7 @@ app.post('/api/invoices', (req, res) => {
       numHT,
       numTax,
       numTTC,
-      payment_status,
+      normPaymentStatus,
       document_url || null,
       notes || null
     ]);
@@ -1172,10 +1215,13 @@ app.put('/api/invoices/:id', (req, res) => {
     const due_date = b.due_date !== undefined ? b.due_date : existing.due_date;
     const numHT = b.amount_ht !== undefined ? Number(b.amount_ht) : existing.amount_ht;
     const numTax = b.tax_rate !== undefined ? Number(b.tax_rate) : existing.tax_rate;
+    const numTTC = b.amount_ttc !== undefined ? Number(b.amount_ttc) : Math.round((numHT * (1 + numTax / 100)) * 100) / 100;
     let payment_status = b.payment_status !== undefined ? b.payment_status : existing.payment_status;
-    if (payment_status === 'émise') payment_status = 'à payer';
-    if (payment_status === 'partiellement payée' || payment_status === 'partiel') payment_status = 'partiellement payé';
-    if (payment_status === 'annulée') payment_status = 'non facturé';
+    if (payment_status === 'émise' || payment_status === 'emise') payment_status = 'à payer';
+    if (payment_status === 'partiellement payée' || payment_status === 'partiel' || payment_status === 'partiellement payee') payment_status = 'partiellement payé';
+    if (payment_status === 'payée' || payment_status === 'payee' || payment_status === 'payé') payment_status = 'payé';
+    if (payment_status === 'annulée' || payment_status === 'annulee') payment_status = 'non facturé';
+    if (payment_status === 'retard') payment_status = 'en retard';
     const document_url = b.document_url !== undefined ? (b.document_url || null) : existing.document_url;
     const notes = b.notes !== undefined ? (b.notes || null) : existing.notes;
 

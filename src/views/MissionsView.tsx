@@ -168,14 +168,29 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
     if (!editingMission) return;
     setEditSubmitting(true);
     try {
+      const {
+        invoiced_amount,
+        collected_amount,
+        billed_amount,
+        paid_amount,
+        actual_hours_spent,
+        actual_minutes_spent,
+        company_name,
+        contact_name,
+        contact_email,
+        pending_tasks_count,
+        ...payload
+      } = editForm;
+
       await api.updateMission(editingMission.id, {
-        ...editForm,
-        contact_id: Number(editForm.contact_id)
+        ...payload,
+        contact_id: Number(editForm.contact_id),
+        closed_date: payload.status === 'clôturée' ? (payload.closed_date || payload.actual_close_date || new Date().toISOString().split('T')[0]) : null
       });
       setEditingMission(null);
       setNotification({
         type: 'success',
-        message: `Mission "${editForm.title}" modifiée avec succès.`
+        message: `Mission "${editForm.title}" mise à jour avec succès.`
       });
       loadData();
     } catch (err: any) {
@@ -211,7 +226,10 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
 
   const handleStatusChange = async (missionId: number, newStatus: MissionStatus) => {
     try {
-      await api.updateMission(missionId, { status: newStatus });
+      await api.updateMission(missionId, {
+        status: newStatus,
+        closed_date: newStatus === 'clôturée' ? new Date().toISOString().split('T')[0] : null
+      });
       setNotification({
         type: 'success',
         message: `Statut de la mission mis à jour vers "${newStatus}".`
@@ -696,26 +714,20 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px]">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Montant facturé (€)</label>
-                  <input
-                    type="number"
-                    step="50"
-                    value={editForm.invoiced_amount}
-                    onChange={(e) => setEditForm({ ...editForm, invoiced_amount: Number(e.target.value) })}
-                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
-                  />
+                  <span className="text-slate-500 block">Total facturé :</span>
+                  <span className="font-mono font-semibold text-slate-800 text-xs">
+                    {formatEuro(editingMission.invoiced_amount || editingMission.billed_amount || 0)}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">(calculé automatiquement via factures)</span>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Montant encaissé (€)</label>
-                  <input
-                    type="number"
-                    step="50"
-                    value={editForm.collected_amount}
-                    onChange={(e) => setEditForm({ ...editForm, collected_amount: Number(e.target.value) })}
-                    className="w-full px-3 py-1.5 font-mono border border-slate-300 rounded"
-                  />
+                  <span className="text-slate-500 block">Total encaissé :</span>
+                  <span className="font-mono font-semibold text-emerald-700 text-xs">
+                    {formatEuro(editingMission.collected_amount || editingMission.paid_amount || 0)}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">(calculé automatiquement via paiements)</span>
                 </div>
               </div>
 
@@ -774,16 +786,16 @@ export const MissionsView: React.FC<MissionsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingMission(null)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={editSubmitting}
-                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700"
+                  className="px-4 py-1.5 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700 cursor-pointer disabled:opacity-50"
                 >
-                  {editSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                  {editSubmitting ? 'Mise à jour en cours...' : 'Mettre à jour la mission'}
                 </button>
               </div>
             </form>

@@ -10,7 +10,8 @@ import {
   Search,
   Settings,
   Terminal,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -35,6 +36,8 @@ interface SidebarProps {
   };
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  currentUser?: string | null;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -42,7 +45,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   counts,
   isMobileOpen,
-  onCloseMobile
+  onCloseMobile,
+  currentUser,
+  onLogout
 }) => {
   const navItems: Array<{ id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -126,8 +131,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
+      {/* User profile & Logout */}
+      <div className="p-3 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-indigo-600/40 border border-indigo-500/50 flex items-center justify-center text-indigo-300 font-bold text-xs shrink-0">
+            {currentUser ? currentUser.substring(0, 1).toUpperCase() : 'M'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-white truncate">
+              {currentUser || 'Matt'}
+            </p>
+            <p className="text-[10px] text-emerald-400 font-normal">Connecté</p>
+          </div>
+        </div>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+            title="Se déconnecter"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Bottom status badge */}
-      <div className="p-4 border-t border-slate-800/80 text-xs text-slate-400 space-y-1.5 bg-slate-950/40">
+      <div className="p-3.5 border-t border-slate-800/80 text-xs text-slate-400 space-y-1.5 bg-slate-950/40">
         <div className="flex items-center justify-between text-[11px]">
           <span>Stockage</span>
           <span className="font-mono text-slate-300">SQLite Local</span>
