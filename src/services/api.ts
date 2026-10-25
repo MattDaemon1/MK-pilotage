@@ -16,6 +16,7 @@ const BASE_URL = '/api';
 
 // Detect whether backend server is online or if we are running in static/offline mode (e.g. Vercel static)
 let isServerOnline: boolean | null = null;
+let syncDebounceTimer: any = null;
 
 export function setIsLocalMode(active: boolean): void {
   isServerOnline = !active;
@@ -25,23 +26,53 @@ export function getIsLocalMode(): boolean {
   return isServerOnline === false;
 }
 
-async function checkServer(): Promise<boolean> {
-  if (isServerOnline !== null) return isServerOnline;
+export function schedulePersistenceSync(): void {
+  if (typeof window === 'undefined') return;
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncPersistence().catch(() => {});
+  }, 400);
+}
+
+export async function syncPersistence(): Promise<void> {
+  if (typeof window === 'undefined') return;
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`${BASE_URL}/dashboard`, { signal: controller.signal });
-    clearTimeout(timeout);
+    const res = await fetch(`${BASE_URL}/backup/json`);
     const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.includes('application/json')) {
-      isServerOnline = true;
-      return true;
+    if (!res.ok || !contentType.includes('application/json')) return;
+
+    const serverData = await res.json();
+    const localStore = clientStorage.getRawData();
+
+    const serverItemCount =
+      (serverData.contacts?.length || 0) +
+      (serverData.missions?.length || 0) +
+      (serverData.quotes?.length || 0) +
+      (serverData.invoices?.length || 0) +
+      (serverData.tasks?.length || 0) +
+      (serverData.activities?.length || 0);
+
+    const localItemCount =
+      (localStore.contacts?.length || 0) +
+      (localStore.missions?.length || 0) +
+      (localStore.quotes?.length || 0) +
+      (localStore.invoices?.length || 0) +
+      (localStore.tasks?.length || 0) +
+      (localStore.activities?.length || 0);
+
+    if (serverItemCount > 0) {
+      // Server is populated -> mirror server state to localStorage
+      await clientStorage.restoreBackup(serverData);
+    } else if (localItemCount > 0 && serverItemCount === 0) {
+      // Server database is newly empty (e.g. container recreation) -> heal server from localStorage
+      await fetch(`${BASE_URL}/backup/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(localStore)
+      });
     }
-    isServerOnline = false;
-    return false;
-  } catch {
-    isServerOnline = false;
-    return false;
+  } catch (err) {
+    // Network offline / unreachable -> ignore silently
   }
 }
 
@@ -61,7 +92,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 async function tryServerOrFallback<T>(
   serverCall: () => Promise<Response>,
-  fallbackCall: () => Promise<T>
+  fallbackCall: () => Promise<T>,
+  isMutation: boolean = false
 ): Promise<T> {
   if (isServerOnline === false) {
     return fallbackCall();
@@ -71,22 +103,27 @@ async function tryServerOrFallback<T>(
     const res = await serverCall();
     const contentType = res.headers.get('content-type') || '';
 
-    // If 404 or returning HTML (typical of Vercel static SPA rewrites when no API exists)
-    if (res.status === 404 || (res.status === 200 && contentType.includes('text/html'))) {
+    // If static server returns HTML index on API route (e.g. static host without Express)
+    if (contentType.includes('text/html')) {
       isServerOnline = false;
       return fallbackCall();
     }
 
     if (res.ok) {
       isServerOnline = true;
-      return res.json();
+      const data = await res.json();
+      if (isMutation) {
+        schedulePersistenceSync();
+      }
+      return data;
     }
 
-    // Server responded with an actual error (400, 422, etc.)
+    // Normal REST API error response (400, 404, 422, 500) with JSON payload
+    // The server is ONLINE! Do NOT set isServerOnline = false.
     return handleResponse<T>(res);
   } catch (err: any) {
-    // Network failure / server unreachable -> switch to client fallback
-    isServerOnline = false;
+    // Genuine network error (e.g. offline, connection refused) -> fallback to clientStorage
+    console.warn('Backend server unreachable, using local storage fallback:', err);
     return fallbackCall();
   }
 }
@@ -154,7 +191,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createContact(data)
+      () => clientStorage.createContact(data),
+      true
     );
   },
 
@@ -166,7 +204,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateContact(id, data)
+      () => clientStorage.updateContact(id, data),
+      true
     );
   },
 
@@ -176,7 +215,8 @@ export const api = {
         fetch(`${BASE_URL}/contacts/${id}/convert`, {
           method: 'POST'
         }),
-      () => clientStorage.convertProspectToClient(id)
+      () => clientStorage.convertProspectToClient(id),
+      true
     );
   },
 
@@ -188,7 +228,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ is_archived })
         }),
-      () => clientStorage.archiveContact(id, is_archived)
+      () => clientStorage.archiveContact(id, is_archived),
+      true
     );
   },
 
@@ -198,7 +239,8 @@ export const api = {
         fetch(`${BASE_URL}/contacts/${id}${force ? '?force=true' : ''}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteContact(id, force)
+      () => clientStorage.deleteContact(id, force),
+      true
     );
   },
 
@@ -235,7 +277,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createActivity(data)
+      () => clientStorage.createActivity(data),
+      true
     );
   },
 
@@ -247,7 +290,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateActivity(id, data)
+      () => clientStorage.updateActivity(id, data),
+      true
     );
   },
 
@@ -257,7 +301,8 @@ export const api = {
         fetch(`${BASE_URL}/activities/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteActivity(id)
+      () => clientStorage.deleteActivity(id),
+      true
     );
   },
 
@@ -282,7 +327,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createMission(data)
+      () => clientStorage.createMission(data),
+      true
     );
   },
 
@@ -294,7 +340,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateMission(id, data)
+      () => clientStorage.updateMission(id, data),
+      true
     );
   },
 
@@ -304,7 +351,8 @@ export const api = {
         fetch(`${BASE_URL}/missions/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteMission(id)
+      () => clientStorage.deleteMission(id),
+      true
     );
   },
 
@@ -324,7 +372,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createContract(data)
+      () => clientStorage.createContract(data),
+      true
     );
   },
 
@@ -336,7 +385,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateContract(id, data)
+      () => clientStorage.updateContract(id, data),
+      true
     );
   },
 
@@ -346,7 +396,8 @@ export const api = {
         fetch(`${BASE_URL}/contracts/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteContract(id)
+      () => clientStorage.deleteContract(id),
+      true
     );
   },
 
@@ -378,7 +429,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createQuote(data)
+      () => clientStorage.createQuote(data),
+      true
     );
   },
 
@@ -390,7 +442,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateQuote(id, data)
+      () => clientStorage.updateQuote(id, data),
+      true
     );
   },
 
@@ -400,7 +453,8 @@ export const api = {
         fetch(`${BASE_URL}/quotes/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteQuote(id)
+      () => clientStorage.deleteQuote(id),
+      true
     );
   },
 
@@ -412,7 +466,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createInvoice(data)
+      () => clientStorage.createInvoice(data),
+      true
     );
   },
 
@@ -424,7 +479,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateInvoice(id, data)
+      () => clientStorage.updateInvoice(id, data),
+      true
     );
   },
 
@@ -434,7 +490,8 @@ export const api = {
         fetch(`${BASE_URL}/invoices/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteInvoice(id)
+      () => clientStorage.deleteInvoice(id),
+      true
     );
   },
 
@@ -453,7 +510,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.recordPayment(data)
+      () => clientStorage.recordPayment(data),
+      true
     );
   },
 
@@ -463,7 +521,8 @@ export const api = {
         fetch(`${BASE_URL}/payments/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deletePayment(id)
+      () => clientStorage.deletePayment(id),
+      true
     );
   },
 
@@ -488,7 +547,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.createTask(data)
+      () => clientStorage.createTask(data),
+      true
     );
   },
 
@@ -500,7 +560,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.updateTask(id, data)
+      () => clientStorage.updateTask(id, data),
+      true
     );
   },
 
@@ -510,7 +571,8 @@ export const api = {
         fetch(`${BASE_URL}/tasks/${id}`, {
           method: 'DELETE'
         }),
-      () => clientStorage.deleteTask(id)
+      () => clientStorage.deleteTask(id),
+      true
     );
   },
 
@@ -538,7 +600,8 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         }),
-      () => clientStorage.restoreBackup(data)
+      () => clientStorage.restoreBackup(data),
+      true
     );
   },
 
@@ -548,7 +611,8 @@ export const api = {
         fetch(`${BASE_URL}/backup/reset-demo`, {
           method: 'POST'
         }),
-      () => clientStorage.resetDemo()
+      () => clientStorage.resetDemo(),
+      true
     );
   },
 

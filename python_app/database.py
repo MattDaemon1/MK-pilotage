@@ -7,7 +7,13 @@ import sqlite3
 import os
 from typing import Optional, List, Dict, Any
 
-DB_FILENAME = "matt_konnect.sqlite"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+except Exception:
+    pass
+DB_FILENAME = os.path.join(DATA_DIR, "matt_konnect.sqlite")
 
 def get_connection(db_path: str = DB_FILENAME) -> sqlite3.Connection:
     """Retourne une connexion active avec contraintes de clés étrangères activées."""

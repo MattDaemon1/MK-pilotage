@@ -1,13 +1,17 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import initSqlJs from 'sql.js';
 import type { Database, SqlJsStatic } from 'sql.js';
 
 let SQL: SqlJsStatic;
 let db: Database;
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, '..');
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DATA_DIR = isServerless ? '/tmp/matt_konnect_data' : path.resolve(process.cwd(), 'data');
+const DATA_DIR = isServerless ? '/tmp/matt_konnect_data' : path.resolve(ROOT_DIR, 'data');
 const DB_FILE = path.join(DATA_DIR, 'matt_konnect.sqlite');
 
 export async function getDatabase(): Promise<Database> {
@@ -394,6 +398,16 @@ export function restoreFromJson(data: any): { success: boolean; message: string 
     for (const r of data.tasks) {
       db.run(`INSERT INTO tasks (id, title, description, due_date, priority, status, contact_id, mission_id, contract_id, task_type, estimated_duration_minutes, actual_duration_minutes, completed_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [r.id, r.title, r.description, r.due_date, r.priority, r.status, r.contact_id, r.mission_id, r.contract_id, r.task_type, r.estimated_duration_minutes, r.actual_duration_minutes, r.completed_at, r.created_at, r.updated_at]);
+    }
+  }
+
+  // Update sqlite_sequence to prevent auto-increment ID conflicts on subsequent inserts
+  const seqTables = ['contacts', 'missions', 'activities', 'contracts', 'quotes', 'invoices', 'payments', 'tasks'];
+  for (const tbl of seqTables) {
+    try {
+      db.run(`INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('${tbl}', COALESCE((SELECT MAX(id) FROM ${tbl}), 0));`);
+    } catch {
+      // Ignore if sqlite_sequence does not support replace
     }
   }
 

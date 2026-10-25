@@ -55,37 +55,57 @@ Application CRM locale en Python avec Streamlit et SQLite pour gérer l'ensemble
 
 ---
 
-## 2. Installation et lancement sous Windows
+## 2. Installation et lancement en local (Windows, macOS, Linux)
 
-### Prérequis
-- Windows 10 ou Windows 11.
-- Python 3.10 ou supérieur installé (cocher *"Add Python to PATH"* lors de l'installation).
+La base de données SQLite est persistée dans le fichier **`data/matt_konnect.sqlite`** et partagée entre l'application Web React et l'application Python.
 
-### Commandes d'installation rapide
+### Option A — Application Web Full-Stack React + Node (Recommandée)
 
-Ouvrez un terminal **PowerShell** ou une **Invite de commandes (CMD)** dans le dossier de l'application :
+Cette version offre l'interface complète moderne avec toutes les fonctionnalités (hub client 8 onglets, raccourci `N`, suivi du temps, devis/factures, double sauvegarde SQLite + navigateur).
 
-```powershell
+```bash
 # 1. Se positionner dans le dossier du projet
-cd C:\MattKonnectCRM
+cd MattKonnectCRM
 
-# 2. Créer l'environnement virtuel Python
+# 2. Installer les dépendances Node.js (Node 18+)
+npm install
+
+# 3. Lancer le serveur local (backend Express + frontend Vite)
+npm run dev
+```
+
+L'application s'ouvre automatiquement sur : **`http://localhost:3000`**
+
+- **Identifiants configurés** :
+  - **Identifiant** : `Matt`
+  - **Mot de passe** : `Maboule35!`
+- **Persistance** : Les données sont enregistrées en temps réel dans `data/matt_konnect.sqlite` et sauvegardées dans le cache sécurisé du navigateur (`localStorage`).
+
+---
+
+### Option B — Application Python Streamlit
+
+Si vous préférez exécuter l'application Python locale :
+
+```bash
+# 1. Créer et activer l'environnement virtuel
 python -m venv venv
 
-# 3. Activer l'environnement virtuel sous Windows
-# Sous PowerShell :
+# Sous Windows (PowerShell) :
 .\venv\Scripts\Activate.ps1
-# Ou sous CMD classique :
+# Ou sous Windows (CMD) :
 venv\Scripts\activate.bat
+# Ou sous macOS / Linux :
+source venv/bin/activate
 
-# 4. Installer les dépendances
+# 2. Installer les dépendances Python
 pip install -r requirements.txt
 
-# 5. Lancer l'application Streamlit
+# 3. Lancer Streamlit
 streamlit run python_app/app.py
 ```
 
-L'application s'ouvrira automatiquement dans votre navigateur par défaut à l'adresse locale `http://localhost:8501`.
+L'application Python s'ouvre sur : **`http://localhost:8501`** (connectée à la même base `data/matt_konnect.sqlite`).
 
 ---
 

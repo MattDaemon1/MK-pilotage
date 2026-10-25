@@ -15,7 +15,7 @@ import { GlobalSearchView } from './views/GlobalSearchView.tsx';
 import { SettingsBackupView } from './views/SettingsBackupView.tsx';
 import { PythonLocalView } from './views/PythonLocalView.tsx';
 import { LoginView } from './views/LoginView.tsx';
-import { api } from './services/api.ts';
+import { api, syncPersistence } from './services/api.ts';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(() => {
@@ -56,6 +56,11 @@ export default function App() {
       // ignore
     }
   };
+
+  useEffect(() => {
+    // Initial sync between SQLite database and local browser storage
+    syncPersistence().catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadBadgeCounts();
